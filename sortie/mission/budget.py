@@ -93,19 +93,19 @@ def select(st: State, ato: Ato, limits: Dict[str, Any]) -> Selection:
     for g in st.ground_units.values():
         d = geo.point_path_km((g.lat, g.lon), path)
         if d <= bubble or f"front:{g.front_id}" in must:
-            ground.append((0.0 if f"front:{g.front_id}" in must else d, "ground_unit", g.id))
+            ground.append((-1.0 if f"front:{g.front_id}" in must else d, "ground_unit", g.id))
     for s in st.sam_sites.values():
         if s.health < 0.1:
             continue
         d = geo.point_path_km((s.lat, s.lon), path)
         key = f"sam_site:{s.id}"
         if d <= max(bubble, s.range_km) or key in must:
-            ground.append((0.0 if key in must else max(0.0, d - s.range_km), "sam_site", s.id))
+            ground.append((-1.0 if key in must else max(0.0, d - s.range_km), "sam_site", s.id))
     for n in st.supply_nodes.values():
         d = geo.point_path_km((n.lat, n.lon), path)
         key = f"supply_node:{n.id}"
         if d <= bubble or key in must:
-            ground.append((0.0 if key in must else d, "supply_node", n.id))
+            ground.append((-1.0 if key in must else d, "supply_node", n.id))
     for r in st.supply_routes.values():
         src, dst = st.supply_nodes.get(r.src), st.supply_nodes.get(r.dst)
         if not src or not dst or not r.convoy_units or src.coalition != dst.coalition:
@@ -114,7 +114,7 @@ def select(st: State, ato: Ato, limits: Dict[str, Any]) -> Selection:
         d = geo.point_path_km(mid, path)
         key = f"supply_route:{r.id}"
         if d <= bubble or key in must:
-            ground.append((0.0 if key in must else d, "supply_route", r.id))
+            ground.append((-1.0 if key in must else d, "supply_route", r.id))
     ground.sort(key=lambda x: (x[0], x[2]))
     for d, kind, eid in ground[: int(limits["max_ground_groups"])]:
         {"ground_unit": sel.ground_units, "sam_site": sel.sam_sites, "supply_node": sel.supply_nodes,

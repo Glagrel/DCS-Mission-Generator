@@ -56,3 +56,10 @@ Not done yet:
 - Phase 7 (ingest, watcher, reassign), Phase 8 (GUI, `python -m sortie` entry point used by
   tools/setup.ps1 and run.ps1), Phase 9, Phase 10 (README, TEST_IN_DCS.md, KNOWN_ISSUES.md,
   install_desanitize.ps1, e2e test). PLAN.md boxes for 5-10 are still unticked.
+
+## Phase 5 / 6 — completed
+- `tests/test_mission.py` (16 tests): each theater builds and reloads in pydcs, SP `Player`
+  slot vs co-op `Client` slots, carrier start, profiles scale content, warehouses, degraded
+  spawns, briefing, error reporting, .miz verification. Fixed: targets of simulated packages
+  are now always inside the ground budget. 90 tests pass.
+- Lua needs in-sim verification; nothing here has been run in DCS.

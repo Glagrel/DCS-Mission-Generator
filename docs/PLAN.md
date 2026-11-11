@@ -8,8 +8,8 @@ run tests, commit.
 - [x] **Phase 2** Theater template format + the 3 templates
 - [x] **Phase 3** Between-sortie war simulator (production, supply, repair, abstract AI resolution, attrition)
 - [x] **Phase 4** ATO generator + player assignment
-- [ ] **Phase 5** Mission builder (pydcs): flights, ground/naval within budget, warehouses, SP + co-op slots, briefing, radio plan
-- [ ] **Phase 6** In-mission Lua: event logging, snapshots, warehouse readback, proximity spawn/despawn
+- [x] **Phase 5** Mission builder (pydcs): flights, ground/naval within budget, warehouses, SP + co-op slots, briefing, radio plan
+- [x] **Phase 6** In-mission Lua: event logging, snapshots, warehouse readback, proximity spawn/despawn
 - [ ] **Phase 7** After-action ingestion → state update, pilot career, next-assignment logic
 - [ ] **Phase 8** Web GUI
 - [ ] **Phase 9** ATC/GCI/SRS layer (feature-flagged, default off)
