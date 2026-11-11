@@ -63,3 +63,11 @@ Not done yet:
   spawns, briefing, error reporting, .miz verification. Fixed: targets of simulated packages
   are now always inside the ground budget. 90 tests pass.
 - Lua needs in-sim verification; nothing here has been run in DCS.
+
+## Phase 7 — after-action ingestion, career, reassignment
+- `runtime/watcher.py` (tail with durable cursor, partial lines, restarts, duplicates,
+  malformed lines, dcs.log fallback), `runtime/aar.py` (facts + timeline), `debrief/ingest.py`
+  (losses, entity damage, captures, warehouse readback, player result), `debrief/reassign.py`
+  (owned-module-safe transfers with reasons), `service.py` (plan → generate → live → debrief →
+  next turn; skip), `runtime/simulate.py` (synthetic events in the Lua's format).
+- 103 tests pass.
