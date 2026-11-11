@@ -1,0 +1,8 @@
+pydcs>=1.0.0
+pydantic>=2.6
+fastapi>=0.110
+uvicorn[standard]>=0.29
+psutil>=5.9
+pyyaml>=6.0
+pytest>=8.0
+httpx>=0.27

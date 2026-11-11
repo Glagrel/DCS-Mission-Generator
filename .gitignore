@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+config/settings.json
+vendor/moose/*.lua
+campaigns/
+*.miz
+out/

@@ -1,0 +1,35 @@
+# Tunable numbers. These are starting guesses - edit freely.
+turn_hours: 6
+profiles:
+  light:    {max_air: 24, max_ground_groups: 20, max_naval_groups: 4,  bubble_km: 90,  spawn_km: 70,  despawn_km: 95}
+  standard: {max_air: 44, max_ground_groups: 40, max_naval_groups: 8,  bubble_km: 140, spawn_km: 100, despawn_km: 130}
+  heavy:    {max_air: 72, max_ground_groups: 70, max_naval_groups: 14, bubble_km: 200, spawn_km: 140, despawn_km: 180}
+ram_thresholds_gb: {light_max: 20, standard_max: 48}   # <=16GB light, ~32GB standard, >=64GB heavy
+difficulty:
+  easy:   {enemy_skill: Average, friendly_skill: High,  enemy_strength: 0.8, loss_bias: 0.8}
+  normal: {enemy_skill: Good,    friendly_skill: Good,  enemy_strength: 1.0, loss_bias: 1.0}
+  hard:   {enemy_skill: High,    friendly_skill: Good,  enemy_strength: 1.2, loss_bias: 1.2}
+logistics:
+  default_weapon_stock: 80        # count given to an unseen weapon item at munition_level 1.0
+  fuel_per_sortie_t: {fighter: 3.0, attacker: 4.0, bomber: 12.0, support: 20.0, helo: 1.0, ww2: 0.6}
+  munition_level_per_sortie: 0.004
+  airbase_fuel_cap_t: 1500
+  resupply_fuel_share: 0.7        # share of delivered tonnage that is fuel; rest is munitions
+  tons_per_munition_level: 400    # tons needed to raise a base's munition level from 0 to 1
+production:
+  airframes_per_turn: 3           # per coalition, scaled by factory health
+  pilots_per_turn: 4
+repair:
+  runway_per_turn: 0.25
+  node_per_turn: 0.15
+  sam_per_turn: 0.10
+ground:
+  front_step: 0.03                # max front movement per turn (fraction of axis)
+  attrition: 0.04
+coop:
+  player_slots: 1                 # 1 = single player (slot is "Player"); >1 = Client slots
+atc:
+  enabled: false
+  voice: "off"                    # off | windows | piper | google
+  srs_path: "C:\Program Files\DCS-SimpleRadio-Standalone"
+  srs_port: 5002
