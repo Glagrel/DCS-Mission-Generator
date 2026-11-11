@@ -1,8 +1,13 @@
-"""Download the latest static MOOSE include into vendor/moose/Moose_.lua."""
+"""Download the latest static MOOSE include into vendor/moose/Moose_.lua.
+
+Also writes vendor/moose/SOURCE.txt recording where and when the file was fetched and its
+commit header line. Nothing is installed into DCS: missions embed the file themselves.
+"""
 from __future__ import annotations
 
 import sys
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 URLS = [
@@ -23,6 +28,11 @@ def fetch(dest: Path = DEST) -> Path:
             if len(data) < 500_000 or b"MOOSE" not in data[:20000]:
                 raise RuntimeError("download does not look like Moose_.lua")
             dest.write_bytes(data)
+            header = data.split(b"\n", 1)[0].decode("utf-8", "replace").strip()
+            info = [f"file: {dest.name}", f"source: {url}",
+                    f"retrieved: {datetime.now(timezone.utc).isoformat()}", f"bytes: {len(data)}",
+                    f"header: {header}"]
+            (dest.parent / "SOURCE.txt").write_text("\n".join(info) + "\n", encoding="utf-8")
             print(f"MOOSE saved to {dest} ({len(data) / 1e6:.1f} MB)")
             return dest
         except Exception as exc:  # try next mirror

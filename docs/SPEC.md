@@ -156,3 +156,26 @@ max_naval_groups, bubble_km, despawn_km, spawn_km`. Auto-selected by RAM (≤16 
 present (FLIGHTCONTROL, AWACS, AIRBOSS, CSAR, MSRS) and otherwise SORTIE's own lightweight
 text GCI. Voice engine: off|windows|piper|google via MSRS; text fallback always available.
 Procedure sets: nato, soviet, ww2 (simple GCI calls only).
+
+## 13. As built (differences from the original outline)
+
+* **Service layer** `sortie/service.py` owns the loop (`plan`, `generate_mission`,
+  `poll_live`, `import_events`, `debrief`, `skip`); the web API and CLI are thin wrappers.
+* **Storage:** migrations via `PRAGMA user_version` (`db.MIGRATIONS`); tables `campaigns`,
+  `entities` (JSON documents), `history`, `events` (deduplicated by event id), `cursors`.
+* **Extra modules:** `terrain.py` (terrain abstraction + fallback), `logs.py` (JSON-lines
+  logging), `sim/readiness.py`, `mission/loadouts.py`, `mission/budget.py` (selection and the
+  `S|kind|entity|n` naming contract), `runtime/simulate.py`, `web/views.py`, `__main__.py`
+  (`gui`, `doctor`, `simulate`, `import-log`).
+* **Event ids** are `<sortie id>-<run id>-<sequence>`; a mission restart starts a new run and
+  only the latest run is debriefed.
+* **Warehouses:** fuel/coalition/limited flags in the .miz; weapon stock applied and read back
+  by Lua (`Warehouse.setItem/getInventory/getLiquidAmount`); fuel readback uses the end/start
+  ratio so no unit assumption is needed.
+* **ATC layer:** SORTIE-native text logic, MOOSE MSRS for optional speech, optional MOOSE
+  FLIGHTCONTROL tower; phrase sets shared between Python and Lua.
+* **Lua is tested** under Lua 5.1 (`lupa`) with `tests/lua_mock.lua` standing in for DCS.
+
+Sources checked: installed pydcs 1.0.0 source; vendored MOOSE `Moose_.lua` (commit 130d358f,
+2026-02-06, see `vendor/moose/SOURCE.txt`); Hoggit wiki pages *DCS Class Warehouse*,
+*DCS func getInventory*, *DCS func setItem*, *Miz warehouses structure*.

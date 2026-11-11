@@ -59,7 +59,7 @@ SORTIE.pages.home = async function () {
   const [list, theaters, status] = await Promise.all([
     SORTIE.api('GET', '/api/campaigns'), SORTIE.api('GET', '/api/theaters'), SORTIE.api('GET', '/api/status')]);
   SORTIE.theaters = theaters;
-  const rows = list.map((c) => `<tr class="${c.id === SORTIE.cid ? 'me' : ''}"><td>${esc(c.name)}</td>
+  const rows = list.map((c) => `<tr class="${c.id === SORTIE.cid ? 'me' : ''}"><td>${esc(c.name)}<div class="dim path">id ${esc(c.id)}</div></td>
     <td class="dim">${new Date(c.updated * 1000).toLocaleString()}</td>
     <td><button onclick="SORTIE.select('${c.id}').then(()=>SORTIE.show('ato'))">Open</button>
         <button class="danger" onclick="SORTIE.removeCampaign('${c.id}')">Delete</button></td></tr>`).join('');

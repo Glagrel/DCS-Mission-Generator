@@ -13,4 +13,7 @@ run tests, commit.
 - [x] **Phase 7** After-action ingestion → state update, pilot career, next-assignment logic
 - [x] **Phase 8** Web GUI
 - [x] **Phase 9** ATC/GCI/SRS layer (feature-flagged, default off)
-- [ ] **Phase 10** README, end-to-end test with simulated event files, final TEST_IN_DCS.md and KNOWN_ISSUES.md
+- [x] **Phase 10** README, end-to-end test with simulated event files, final TEST_IN_DCS.md and KNOWN_ISSUES.md
+
+All phases are complete in software. Remaining work is in-sim verification
+(docs/TEST_IN_DCS.md) and the tuning/limitations listed in docs/KNOWN_ISSUES.md.

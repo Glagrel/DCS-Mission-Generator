@@ -76,6 +76,18 @@ def simulate(campaign_id: str, outcome: str) -> int:
     return 0
 
 
+def import_log(campaign_id: str, path: str) -> int:
+    """Load events for the current sortie from an events.jsonl copy or a dcs.log (SORTIE_EVT lines)."""
+    from pathlib import Path
+    from .db import Store
+    from .service import Service
+    s = config.load_settings()
+    svc = Service(Store(s.db_path), s)
+    n = svc.import_events(campaign_id, Path(path))
+    print(f"{n} new events imported. Now use 'End sortie & debrief' in the GUI.")
+    return 0 if n else 1
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="sortie", description="SORTIE dynamic campaign for DCS World")
     sub = ap.add_subparsers(dest="cmd")
@@ -87,7 +99,12 @@ def main(argv=None) -> int:
     sm = sub.add_parser("simulate", help="write synthetic mission events for testing without DCS")
     sm.add_argument("campaign_id")
     sm.add_argument("--outcome", default="success", choices=["success", "fail", "eject", "killed", "no_takeoff"])
+    il = sub.add_parser("import-log", help="import mission events from dcs.log or an events.jsonl copy")
+    il.add_argument("campaign_id")
+    il.add_argument("path")
     a = ap.parse_args(argv)
+    if a.cmd == "import-log":
+        return import_log(a.campaign_id, a.path)
     if a.cmd == "doctor":
         return doctor()
     if a.cmd == "simulate":

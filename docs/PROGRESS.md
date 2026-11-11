@@ -91,3 +91,14 @@ Not done yet:
   SetGoogle/PlayText`, `MSRS.Provider.{WINDOWS,GOOGLE,AZURE,AMAZON}`,
   `FLIGHTCONTROL:New(AirbaseName,Frequency,Modulation,PathToSRS,Port,GoogleKey)`.
 - Python and Lua produce identical phrases (parity tests). 127 tests pass.
+
+## Phase 10 — documentation and end-to-end verification
+- `tools/install_desanitize.ps1` (backup, apply, `-Undo`, `-DryRun`, `-Force`, path checks);
+  tested by pytest against a fake install in a temp folder only. Never run on the real install.
+- `tools/fetch_moose.py` now records `vendor/moose/SOURCE.txt`.
+- `README.md`, `docs/TEST_IN_DCS.md` (66 in-sim checks with actual/pass-fail columns),
+  `docs/KNOWN_ISSUES.md`, SPEC section 13.
+- `tests/test_e2e.py`: full flow for all three theaters over four cycles, restart safety,
+  12-cycle abstract war. `python -m sortie doctor` verified on this machine (read-only).
+- Final: 135 tests pass. No file outside the project folder was written by the agent except
+  temp directories. Nothing has been run in DCS.
