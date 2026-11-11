@@ -41,3 +41,18 @@
   (player flight chosen by the ATO, forced tasking, stand-down reasons, owned-module gate),
   `mission/loadouts.py` (payload pick via pydcs payload files; empty when DCS is absent).
 - 62 tests pass.
+
+## Phase 5 / 6 — mission builder and in-mission Lua (IN PROGRESS, session stopped here)
+Done:
+- `mission/budget.py`, `forces.py`, `flights.py`, `warehouses.py`, `scripts.py`, `briefing.py`,
+  `builder.py`; `atc/procedures.py` + `atc/luacfg.py` (config only). Trial builds of all three
+  theaters produce .miz files that pydcs reloads; real DCS payloads load when the install is found.
+- Lua: `sortie_json.lua`, `sortie_core.lua`, `sortie_events.lua`, `sortie_warehouse.lua`,
+  `sortie_spawn.lua`, tested under real Lua 5.1 (lupa) with a mocked DCS API (12 tests).
+- Warehouse API verified on the Hoggit wiki (getInventory/setItem/getLiquidAmount, 2.8.8+).
+Not done yet:
+- pytest tests for the mission builder itself (only ad-hoc trial builds were run).
+- `sortie/lua/sortie_atc.lua` does not exist: building with `atc_enabled=true` fails.
+- Phase 7 (ingest, watcher, reassign), Phase 8 (GUI, `python -m sortie` entry point used by
+  tools/setup.ps1 and run.ps1), Phase 9, Phase 10 (README, TEST_IN_DCS.md, KNOWN_ISSUES.md,
+  install_desanitize.ps1, e2e test). PLAN.md boxes for 5-10 are still unticked.

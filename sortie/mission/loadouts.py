@@ -57,7 +57,22 @@ def configure(install: Optional[Path], saved_games: Optional[Path] = None) -> No
             mods = [p / "UnitPayloads" for p in mod_dir.iterdir() if (p / "UnitPayloads").is_dir()]
     PayloadDirectories._mod = mods
     PayloadDirectories._user = user
+    _reset_cache()
     _configured = True
+
+
+def _reset_cache() -> None:
+    """Forget payloads parsed with a previous directory configuration."""
+    from dcs import helicopters, planes
+    from dcs.unittype import FlyingType
+    FlyingType._payload_cache = None
+    for t in list(planes.plane_map.values()) + list(helicopters.helicopter_map.values()):
+        t.payloads = None
+
+
+def configure_from_settings(settings) -> None:
+    from .. import config
+    configure(config.resolved_install(settings), config.resolved_saved_games(settings))
 
 
 def _payloads(aircraft: str) -> Dict[str, dict]:

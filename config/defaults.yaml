@@ -10,7 +10,10 @@ difficulty:
   normal: {enemy_skill: Good,    friendly_skill: Good,  enemy_strength: 1.0, loss_bias: 1.0}
   hard:   {enemy_skill: High,    friendly_skill: Good,  enemy_strength: 1.2, loss_bias: 1.2}
 logistics:
-  default_weapon_stock: 80        # count given to an unseen weapon item at munition_level 1.0
+  limit_fuel: true                # DCS warehouse: limited fuel at airbases
+  limit_munitions: true           # DCS warehouse: limited weapons (stock applied by Lua at start)
+  limit_aircraft: false           # DCS warehouse: limited airframes (off until verified in DCS)
+  default_weapon_stock: 80       # count given to an unseen weapon item at munition_level 1.0
   fuel_per_sortie_t: {fighter: 3.0, attacker: 4.0, bomber: 12.0, support: 20.0, helo: 1.0, ww2: 0.6}
   munition_level_per_sortie: 0.004
   airbase_fuel_cap_t: 1500
