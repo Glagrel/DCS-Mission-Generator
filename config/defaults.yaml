@@ -31,5 +31,5 @@ coop:
 atc:
   enabled: false
   voice: "off"                    # off | windows | piper | google
-  srs_path: "C:\Program Files\DCS-SimpleRadio-Standalone"
+  srs_path: 'C:\Program Files\DCS-SimpleRadio-Standalone'
   srs_port: 5002

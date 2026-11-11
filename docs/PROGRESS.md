@@ -8,3 +8,10 @@
   group with late activation, vehicle/ship/static groups, MISSION START DoScriptFile
   trigger, airport warehouse fields, save + reload. See DECISIONS 1-6.
 - Wrote SPEC.md, PLAN.md, DECISIONS.md.
+- Scaffold: `sortie/paths.py`, `sortie/config.py`, `config/defaults.yaml`, `tools/setup.ps1`,
+  `tools/run.ps1`, `tools/fetch_moose.py` (MOOSE downloaded, 4.4 MB). 6 tests pass.
+
+## Phase 1 — data model + SQLite state
+- `sortie/models.py` (entities), `models_ato.py` (ATO, results), `db.py` (document store +
+  history), `state.py` (load/mutate/save whole campaign, seeded RNG, clock), `geo.py`.
+- 9 tests pass.
