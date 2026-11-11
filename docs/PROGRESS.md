@@ -81,3 +81,13 @@ Not done yet:
   ATO/briefing, map layers, roster, pilot, logistics, live, settings all render with no JS errors.
 - Bug found and fixed: parallel GUI requests shared one SQLite connection (now serialised;
   regression test added).
+
+## Phase 9 — ATC / GCI / SRS layer (feature flag, default off)
+- `atc/procedures.py` (NATO, Soviet-style, WW2 phrase sets + formatting), `atc/luacfg.py`,
+  `lua/sortie_atc.lua` (tower sequence, check-in, picture, bogey dope, declare, threat, merged,
+  vectors to home/tanker, CSAR notice, F10 menu; text always, MSRS voice when MOOSE is loaded).
+- MOOSE signatures verified against the vendored `Moose_.lua` (commit 130d358f, 2026-02-06):
+  `MSRS:New(Path,Frequency,Modulation,Backend)`, `SetPort/SetCoalition/SetCulture/SetProvider/
+  SetGoogle/PlayText`, `MSRS.Provider.{WINDOWS,GOOGLE,AZURE,AMAZON}`,
+  `FLIGHTCONTROL:New(AirbaseName,Frequency,Modulation,PathToSRS,Port,GoogleKey)`.
+- Python and Lua produce identical phrases (parity tests). 127 tests pass.

@@ -49,6 +49,12 @@ coord = {
   LOtoLL = function(p) return p.x / 111000, p.z / 111000, p.y end,
   LLtoLO = function(lat, lon, alt) return { x = lat * 111000, y = alt or 0, z = lon * 111000 } end,
 }
+radio = { modulation = { AM = 0, FM = 1 } }
+MOCK.menu = {}
+missionCommands = {
+  addSubMenuForGroup = function(gid, name) return { name } end,
+  addCommandForGroup = function(gid, name, path, fn) MOCK.menu[name] = fn end,
+}
 if MOCK_SANITIZED then
   io, lfs, os = nil, nil, nil
 else
@@ -67,6 +73,7 @@ function MOCK.unit(t)
   function u:getPlayerName() return self.player end
   function u:getPoint() return { x = self.x, y = self.alt, z = self.z } end
   function u:inAir() return self.air end
+  function u:getVelocity() return { x = t.vx or 0, y = 0, z = t.vz or 0 } end
   function u:getFuel() return 0.8 end
   function u:getLife() return 100 end
   function u:getAmmo()
@@ -109,6 +116,7 @@ function MOCK.airbase(name, weapons, liquids, unlimited)
   function ab:getWarehouse() return self.wh end
   function ab:getName() return self.name end
   function ab:getCoalition() return self.c end
+  function ab:getPoint() return { x = self.x or 0, y = 0, z = self.z or 0 } end
   MOCK.airbases[name] = ab
   return ab
 end

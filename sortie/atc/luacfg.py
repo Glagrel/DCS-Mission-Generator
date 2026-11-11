@@ -39,6 +39,9 @@ def build(st: State, ato: Ato, settings: config.Settings, manifest: Dict[str, An
         "tankers": [{"callsign": t["callsign"], "freq": t["freq"], "tacan": t.get("tacan"),
                      "group": _group(manifest, t.get("flight_id"))} for t in tankers],
         "picture_interval": 120, "threat_range_m": procedures.THREAT_RANGE_M[proc],
+        "picture_range_m": 185000, "player_callsign": flt.callsign if flt else "Flight",
+        "wind_dir": int(st.meta.weather.get("wind_dir", 0)), "wind_speed": int(st.meta.weather.get("wind_ms", 0)),
+        "use_flightcontrol": bool(config.defaults(settings)["atc"].get("use_flightcontrol", False)),
         "units": "metric" if proc == "soviet" else "imperial",
     }
 

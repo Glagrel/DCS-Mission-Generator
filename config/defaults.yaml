@@ -36,3 +36,4 @@ atc:
   voice: "off"                    # off | windows | piper | google
   srs_path: 'C:\Program Files\DCS-SimpleRadio-Standalone'
   srs_port: 5002
+  use_flightcontrol: false        # voice only: let MOOSE FLIGHTCONTROL run the home tower

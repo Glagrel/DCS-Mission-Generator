@@ -65,3 +65,21 @@ Entries are numbered; **FLAG** marks things that need in-sim verification or lat
 18. **ATO balance:** each additional package of the same mission type costs 7 priority points
     (`planner.DIMINISH`) so one need category cannot monopolise the cycle. Max 14 packages
     per side per cycle. Both are tuning guesses.
+19. **ATC layer design.** SORTIE's own Lua produces all controller text from native DCS API
+    data so that text never depends on voice, SRS or MOOSE. MOOSE is used for speech only
+    (MSRS) and optionally for the home tower (FLIGHTCONTROL, `atc.use_flightcontrol`, voice
+    only because FLIGHTCONTROL speaks exclusively through SRS).
+20. **MOOSE classes evaluated but not wired:** `AWACS:New(Name, AirWing, ...)` needs a MOOSE
+    AIRWING/OPS stack that would fight with the flights pydcs already placed; `AIRBOSS`
+    needs its sound-file pack and a recovery-tanker template; `CSAR:New(Coalition, Template,
+    Alias)` needs late-activated helicopter templates; `AI_A2A_DISPATCHER` would re-task the
+    ATO's flights. They are left out deliberately; CSAR is a radio notice plus the campaign's
+    pilot-recovery roll. **FLAG** revisit after the basic layer is proven in DCS.
+21. **Piper voice:** MSRS has no Piper provider (providers are win/gcloud/azure/aws). The
+    setting is stored and passed through, but the mission falls back to Windows TTS and logs
+    it. **FLAG / partial.**
+22. **GCI detection is abstracted:** the controller "sees" every airborne hostile within
+    185 km of the player rather than modelling radar coverage. Bearings are true, not magnetic.
+23. **Limited aircraft in warehouses is off by default** (`logistics.limit_aircraft`): the
+    .miz aircraft rows need `wsType` data pydcs lacks, and a wrong table could block the
+    player's slot. Airframe attrition is enforced by the campaign instead (flight sizes).
