@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SORTIE</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="brand">SORTIE</div>
+  <div id="campaign-bar" class="bar"></div>
+  <button id="btn-generate" class="primary" hidden>Generate Next Mission</button>
+</header>
+<nav id="tabs">
+  <button data-tab="home" class="active">Campaigns</button>
+  <button data-tab="map" data-needs="c">Map</button>
+  <button data-tab="ato" data-needs="c">ATO &amp; Briefing</button>
+  <button data-tab="roster" data-needs="c">Squadrons</button>
+  <button data-tab="career" data-needs="c">Pilot</button>
+  <button data-tab="logistics" data-needs="c">Logistics</button>
+  <button data-tab="live" data-needs="c">Live Mission</button>
+  <button data-tab="debrief" data-needs="c">Debrief</button>
+  <button data-tab="settings">Settings</button>
+</nav>
+<div id="notice" hidden></div>
+<main>
+  <section id="tab-home"></section>
+  <section id="tab-map" hidden><div id="map"></div><div id="map-legend" class="legend"></div></section>
+  <section id="tab-ato" hidden></section>
+  <section id="tab-roster" hidden></section>
+  <section id="tab-career" hidden></section>
+  <section id="tab-logistics" hidden></section>
+  <section id="tab-live" hidden></section>
+  <section id="tab-debrief" hidden></section>
+  <section id="tab-settings" hidden></section>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/pages.js"></script>
+<script src="/static/mission.js"></script>
+<script>SORTIE.start();</script>
+</body>
+</html>

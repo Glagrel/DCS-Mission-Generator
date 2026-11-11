@@ -71,3 +71,13 @@ Not done yet:
   (owned-module-safe transfers with reasons), `service.py` (plan → generate → live → debrief →
   next turn; skip), `runtime/simulate.py` (synthetic events in the Lua's format).
 - 103 tests pass.
+
+## Phase 8 — web GUI
+- `web/app.py` (FastAPI: status, settings, modules, theaters, campaigns, overview, map, ATO,
+  briefing, roster, career, logistics, history, generate, live, debrief, skip), `web/views.py`,
+  static SPA (`index.html`, `style.css`, `app.js`, `pages.js`, `mission.js`) with Leaflet map.
+- `python -m sortie gui|doctor|simulate` (`sortie/__main__.py`).
+- Checked in a browser against a temp database: wizard, mission generation (path shown),
+  ATO/briefing, map layers, roster, pilot, logistics, live, settings all render with no JS errors.
+- Bug found and fixed: parallel GUI requests shared one SQLite connection (now serialised;
+  regression test added).

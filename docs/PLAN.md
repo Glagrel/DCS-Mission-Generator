@@ -11,6 +11,6 @@ run tests, commit.
 - [x] **Phase 5** Mission builder (pydcs): flights, ground/naval within budget, warehouses, SP + co-op slots, briefing, radio plan
 - [x] **Phase 6** In-mission Lua: event logging, snapshots, warehouse readback, proximity spawn/despawn
 - [x] **Phase 7** After-action ingestion → state update, pilot career, next-assignment logic
-- [ ] **Phase 8** Web GUI
+- [x] **Phase 8** Web GUI
 - [ ] **Phase 9** ATC/GCI/SRS layer (feature-flagged, default off)
 - [ ] **Phase 10** README, end-to-end test with simulated event files, final TEST_IN_DCS.md and KNOWN_ISSUES.md
