@@ -24,3 +24,11 @@
 - Revised brief received mid-phase: added DB migrations (`PRAGMA user_version`), `events` and
   `cursors` tables, `sortie/logs.py` (JSON-lines logging), `pyproject.toml`.
 - 27 tests pass.
+
+## Phase 3 — between-sortie war simulator
+- `sim/readiness.py` (grounding rules, sortie costs), `sim/supply.py` (production → routes →
+  bases/troops, interdiction decay, carrier UNREP), `sim/production.py` (replacements by
+  deficit priority, repairs), `sim/airwar.py` (seeded probabilistic resolution: air
+  opposition, SAM threat on route, target effects), `sim/ground.py` (front movement,
+  attrition, capture of bases/nodes/SAMs, victory), `sim/turn.py` (pipeline + clock, weather
+  drift, naval movement). 42 tests pass, all seeded/deterministic.

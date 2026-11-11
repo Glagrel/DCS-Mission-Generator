@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-MISSION_TYPES = ("CAP", "ESCORT", "SWEEP", "SEAD", "DEAD", "STRIKE", "CAS", "INTERDICTION",
+MISSION_TYPES = ("CAP", "INTERCEPT", "ESCORT", "SWEEP", "SEAD", "DEAD", "STRIKE", "CAS", "INTERDICTION",
                  "ANTISHIP", "RECON", "TANKER", "AWACS", "TRANSPORT")
 A2A = ("CAP", "ESCORT", "SWEEP")
 A2G = ("SEAD", "DEAD", "STRIKE", "CAS", "INTERDICTION", "ANTISHIP")

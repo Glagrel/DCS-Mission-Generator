@@ -65,7 +65,8 @@ def build_state(t: Theater, opt: CareerOptions, settings: Optional[config.Settin
         coalition_names={s: c.name for s, c in t.coalitions.items()},
         countries={s: list(c.countries) for s, c in t.coalitions.items()},
         bullseye={s: M.LatLon(lat=v[0], lon=v[1]) for s, v in t.bullseye.items()},
-        weather=dict(t.start.weather), owned_modules=owned(settings))
+        weather=dict(t.start.weather), owned_modules=owned(settings),
+        production={s: dict(c.production) for s, c in t.coalitions.items() if c.production})
     st = State(meta=meta)
     cap = d["logistics"]["airbase_fuel_cap_t"]
     ww2 = t.era.kind == "ww2"

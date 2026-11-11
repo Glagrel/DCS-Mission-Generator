@@ -40,6 +40,8 @@ class Meta(BaseModel):
     weather: Dict[str, Any] = Field(default_factory=dict)
     owned_modules: List[str] = Field(default_factory=list)
     war_score: float = 0.0             # -1 red winning .. +1 blue winning
+    production: Dict[str, Dict[str, float]] = Field(default_factory=dict)  # side -> per-turn overrides
+    features: Dict[str, Any] = Field(default_factory=dict)
 
 
 class Fuel(BaseModel):

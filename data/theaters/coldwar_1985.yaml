@@ -70,7 +70,7 @@ squadrons:
   - {id: 226osap, name: 226th OSAP, coalition: red, country: USSR, airbase: sperenberg, aircraft: An-26B, tasks: [TRANSPORT], airframes: 8, callsign: "121"}
   - {id: 178ovp, name: 178th OVP, coalition: red, country: USSR, airbase: stendal, aircraft: Mi-8MT, tasks: [TRANSPORT, CAS], airframes: 14, callsign: "131"}
 fronts:
-  - {id: hannover_axis, name: Hannover axis, a: [52.40, 9.75], b: [52.20, 12.00], position: 0.5, width_km: 40}
+  - {id: hannover_axis, name: Hannover axis, a: [52.42, 9.20], b: [52.20, 12.00], position: 0.62, width_km: 40}
   - {id: hamburg_axis, name: Hamburg axis, a: [53.55, 10.00], b: [53.63, 11.40], position: 0.5, width_km: 30}
 ground_units:
   - {id: us2ad, name: US 2nd Armored Div (Fwd), coalition: blue, country: USA, front: hannover_axis, units: {M-1 Abrams: 6, M-2 Bradley: 6, M-109: 3, M-113: 3}, supply_node: dep_minden}
