@@ -32,3 +32,12 @@
   opposition, SAM threat on route, target effects), `sim/ground.py` (front movement,
   attrition, capture of bases/nodes/SAMs, victory), `sim/turn.py` (pipeline + clock, weather
   drift, naval movement). 42 tests pass, all seeded/deterministic.
+
+## Phase 4 — ATO generator + player assignment
+- `ato/needs.py` (transparent scoring with a reason per need), `ato/planner.py` (allocation
+  with squadron pool, range check, diminishing returns per mission type, attached SEAD and
+  escort flights, support info), `ato/route.py` (waypoints, SAM-aware ingress choice, ETAs
+  anchored on TOT), `ato/radio.py` (bands per doctrine/era, callsigns, TACAN), `ato/assign.py`
+  (player flight chosen by the ATO, forced tasking, stand-down reasons, owned-module gate),
+  `mission/loadouts.py` (payload pick via pydcs payload files; empty when DCS is absent).
+- 62 tests pass.

@@ -57,3 +57,11 @@ Entries are numbered; **FLAG** marks things that need in-sim verification or lat
 16. **Fronts are an axis** (blue rear anchor → red rear anchor) with a position 0..1; ground
     formations are placed ~3 km either side of the line at mission-build time. Simple, but it
     gives front movement, CAS targets and base capture (an airbase overrun by the line flips).
+17. **Loadouts** come from DCS's own `UnitPayloads` Lua files, parsed by pydcs. pydcs's
+    built-in install lookup reads the "DCS World" registry key first, which on this machine
+    points at the Saved Games folder, so SORTIE sets `PayloadDirectories` explicitly from its
+    own detection. With no DCS install (tests) flights are built with empty pylons and the
+    builder emits a warning. The player can always re-arm on the ramp.
+18. **ATO balance:** each additional package of the same mission type costs 7 priority points
+    (`planner.DIMINISH`) so one need category cannot monopolise the cycle. Max 14 packages
+    per side per cycle. Both are tuning guesses.
