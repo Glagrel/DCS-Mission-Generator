@@ -53,3 +53,35 @@ def test_geo():
     assert geo.point_segment_km((25.5, 55.5), a, b) < 51 and geo.point_segment_km((25.5, 55.5), a, b) > 49
     fl = geo.front_line(a, b, 0.5, 40)
     assert abs(geo.dist_km(fl[0], fl[1]) - 40) < 0.5
+
+
+def test_migrations_and_events(tmp_path):
+    import sqlite3
+    from sortie import db
+    path = tmp_path / "m.db"
+    conn = sqlite3.connect(path)          # a database created by "version 1" of the app
+    conn.executescript(db.MIGRATIONS[0]); conn.execute("PRAGMA user_version = 1"); conn.commit(); conn.close()
+    s = Store(path)
+    assert s.schema_version == len(db.MIGRATIONS)
+    evs = [{"id": "r1-1", "t": 1.0, "ev": "birth"}, {"id": "r1-2", "t": 2.0, "ev": "kill"}]
+    assert s.add_events("c", 1, evs) == 2
+    assert s.add_events("c", 1, evs + [{"id": "r1-3", "t": 3, "ev": "land"}]) == 1     # duplicates ignored
+    assert [e["ev"] for e in s.events("c", 1)] == ["birth", "kill", "land"]
+    assert s.get_cursor("w") is None
+    s.set_cursor("w", "abc", 120)
+    s.close()
+    s2 = Store(path)                      # reopening does not re-run migrations or lose data
+    assert s2.get_cursor("w") == {"file_id": "abc", "offset": 120} and len(s2.events("c", 1)) == 3
+
+
+def test_json_logging(tmp_path):
+    import json, logging
+    from sortie import logs
+    f = tmp_path / "log" / "s.jsonl"
+    logs.setup("INFO", f)
+    logging.getLogger("sortie.test").info("hello", extra={"turn": 3})
+    for h in logging.getLogger("sortie").handlers:
+        h.flush()
+    rec = json.loads(f.read_text().splitlines()[-1])
+    assert rec["msg"] == "hello" and rec["turn"] == 3 and rec["logger"] == "sortie.test"
+    logs.setup("INFO")

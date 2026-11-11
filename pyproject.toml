@@ -1,0 +1,23 @@
+[project]
+name = "sortie"
+version = "0.1.0"
+description = "SORTIE - a Falcon BMS-style dynamic campaign for DCS World"
+requires-python = ">=3.10"
+dependencies = [
+  "pydcs>=1.0.0,<2",      # NOTE: the PyPI package "dcs" is NOT the DCS library
+  "pydantic>=2.6,<3",
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "psutil>=5.9",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "httpx>=0.27"]
+
+[tool.setuptools.packages.find]
+include = ["sortie*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

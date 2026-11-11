@@ -1,0 +1,125 @@
+id: gulf_crisis
+name: Persian Gulf Crisis
+description: >
+  Present day. The (fictional) Farsian Republic closes the Strait of Hormuz and lands troops
+  on the Musandam peninsula. A US-led coalition fights to reopen the strait against a modern
+  integrated air defence system. The DCS country "Iran" is used for the fictional power.
+terrain: PersianGulf
+era:
+  year: 2012
+  kind: modern
+  restrictions: ["Types introduced up to 2012"]
+start:
+  date: "2012-03-14"
+  time: "05:45"
+  weather: {temp_c: 27, wind_dir: 320, wind_ms: 5, cloud_base_m: 3000, cloud_density: 2, cloud_thickness_m: 300, visibility_km: 35}
+coalitions:
+  blue:
+    name: Coalition
+    countries: [USA, UK, United Arab Emirates]
+    capabilities: [AWACS, TANKER, GCI, CARRIER, SEAD, PGM, HELO, RADAR_SAM, NIGHT]
+    doctrine: nato
+  red:
+    name: Farsian Republic
+    countries: [Iran]
+    capabilities: [GCI, SEAD, HELO, RADAR_SAM, PGM]
+    doctrine: soviet
+bullseye: {blue: [26.10, 55.60], red: [26.90, 55.80]}
+airbases:
+  - {id: dhafra, dcs_name: Al Dhafra AFB, coalition: blue, fuel: 1500, supply_node: fac_mussafah}
+  - {id: minhad, dcs_name: Al Minhad AFB, coalition: blue, fuel: 1200, supply_node: port_jebelali}
+  - {id: abudhabi, dcs_name: Abu Dhabi Intl, coalition: blue, fuel: 1200, supply_node: fac_mussafah}
+  - {id: fujairah, dcs_name: Fujairah Intl, coalition: blue, fuel: 500, supply_node: port_fujairah}
+  - {id: rak, dcs_name: Ras Al Khaimah Intl, coalition: blue, fuel: 500, supply_node: dep_sharjah}
+  - {id: bandarabbas, dcs_name: Bandar Abbas Intl, coalition: red, fuel: 1200, supply_node: port_bandarabbas}
+  - {id: havadarya, dcs_name: Havadarya, coalition: red, fuel: 700, supply_node: port_bandarabbas}
+  - {id: qeshm, dcs_name: Qeshm Island, coalition: red, fuel: 400, supply_node: port_bandarabbas}
+  - {id: lar, dcs_name: Lar, coalition: red, fuel: 700, supply_node: dep_lar}
+  - {id: lengeh, dcs_name: Bandar Lengeh, coalition: red, fuel: 500, supply_node: dep_lengeh}
+  - {id: kish, dcs_name: Kish Intl, coalition: red, fuel: 600, supply_node: dep_lengeh}
+  - {id: shiraz, dcs_name: Shiraz Intl, coalition: red, fuel: 1500, supply_node: fac_shiraz}
+  - {id: kerman, dcs_name: Kerman, coalition: red, fuel: 1000, supply_node: fac_kerman}
+  - {id: khasab, dcs_name: Khasab, coalition: red, fuel: 200, supply_node: port_bandarabbas}
+carriers:
+  - {id: cvn73, name: USS George Washington CSG, coalition: blue, country: USA, ships: [CVN_73, TICONDEROG, USS_Arleigh_Burke_IIa], lat: 24.70, lon: 57.60, track: [[24.70, 57.60], [25.10, 57.90]], fuel: 1500}
+  - {id: lha1, name: USS Tarawa ARG, coalition: blue, country: USA, ships: [LHA_Tarawa, PERRY], lat: 25.30, lon: 56.90, track: [[25.30, 56.90], [25.00, 57.00]], fuel: 500}
+squadrons:
+  - {id: 71fs, name: 71st FS, coalition: blue, country: USA, airbase: dhafra, aircraft: F-15C, tasks: [CAP, ESCORT, SWEEP], airframes: 18, callsign: Eagle}
+  - {id: 77fs, name: 77th FS, coalition: blue, country: USA, airbase: dhafra, aircraft: F-16C_50, tasks: [SEAD, DEAD, STRIKE, CAP, ESCORT, CAS], airframes: 18, callsign: Viper}
+  - {id: 336fs, name: 336th FS, coalition: blue, country: USA, airbase: dhafra, aircraft: F-15ESE, tasks: [STRIKE, DEAD, INTERDICTION, CAP], airframes: 16, callsign: Dude}
+  - {id: 74fs, name: 74th FS, coalition: blue, country: USA, airbase: minhad, aircraft: A-10C_2, tasks: [CAS, INTERDICTION], airframes: 16, callsign: Hawg}
+  - {id: vfa27, name: VFA-27, coalition: blue, country: USA, airbase: cvn73, aircraft: FA-18C_hornet, tasks: [CAP, SEAD, STRIKE, ANTISHIP, ESCORT, CAS], airframes: 14, callsign: Mace}
+  - {id: vf103, name: VF-103, coalition: blue, country: USA, airbase: cvn73, aircraft: F-14B, tasks: [CAP, ESCORT, SWEEP, STRIKE], airframes: 12, callsign: Victory}
+  - {id: vaw115, name: VAW-115, coalition: blue, country: USA, airbase: cvn73, aircraft: E-2C, tasks: [AWACS], airframes: 3, callsign: Wizard}
+  - {id: vs21, name: VS-21, coalition: blue, country: USA, airbase: cvn73, aircraft: S-3B Tanker, tasks: [TANKER], airframes: 4, callsign: Arco}
+  - {id: vma311, name: VMA-311, coalition: blue, country: USA, airbase: lha1, aircraft: AV8BNA, tasks: [CAS, STRIKE, INTERDICTION], airframes: 8, callsign: Tomcat}
+  - {id: uae71, name: 71 Sqn UAEAF, coalition: blue, country: United Arab Emirates, airbase: minhad, aircraft: M-2000C, tasks: [CAP, ESCORT, SWEEP], airframes: 14, callsign: Shaheen}
+  - {id: raf31, name: No. 31 Sqn RAF, coalition: blue, country: UK, airbase: minhad, aircraft: Tornado GR4, tasks: [STRIKE, DEAD, INTERDICTION, RECON], airframes: 10, callsign: Goldstar}
+  - {id: 968eaacs, name: 968th EAACS, coalition: blue, country: USA, airbase: dhafra, aircraft: E-3A, tasks: [AWACS], airframes: 3, callsign: Darkstar}
+  - {id: 908ears, name: 908th EARS, coalition: blue, country: USA, airbase: dhafra, aircraft: KC-135, tasks: [TANKER], airframes: 4, callsign: Shell}
+  - {id: 340ears, name: 340th EARS, coalition: blue, country: USA, airbase: abudhabi, aircraft: KC135MPRS, tasks: [TANKER], airframes: 3, callsign: Texaco}
+  - {id: 746eas, name: 746th EAS, coalition: blue, country: USA, airbase: abudhabi, aircraft: C-130, tasks: [TRANSPORT], airframes: 6, callsign: Herky}
+  - {id: 1_3avn, name: 1-3 Attack Avn, coalition: blue, country: USA, airbase: rak, aircraft: AH-64D_BLK_II, tasks: [CAS], airframes: 10, callsign: Viking}
+  - {id: tfb8, name: TFB-8 81st TFS, coalition: red, country: Iran, airbase: shiraz, aircraft: F-14A, tasks: [CAP, ESCORT, SWEEP], airframes: 12, callsign: "101"}
+  - {id: tfb9a, name: TFB-9 23rd TFS, coalition: red, country: Iran, airbase: bandarabbas, aircraft: MiG-29A, tasks: [CAP, ESCORT, SWEEP], airframes: 16, callsign: "201"}
+  - {id: tfb9b, name: TFB-9 91st TFS, coalition: red, country: Iran, airbase: bandarabbas, aircraft: F-4E, tasks: [STRIKE, CAP, ANTISHIP, ESCORT], airframes: 16, callsign: "301"}
+  - {id: tfb14, name: TFB-14 41st TFS, coalition: red, country: Iran, airbase: lar, aircraft: F-5E-3, tasks: [CAP, CAS, INTERDICTION], airframes: 16, callsign: "401"}
+  - {id: tfb7, name: TFB-7 72nd TFS, coalition: red, country: Iran, airbase: shiraz, aircraft: Su-24M, tasks: [STRIKE, SEAD, INTERDICTION, ANTISHIP], airframes: 14, callsign: "501"}
+  - {id: irgc1, name: IRGC-AF 1st Sqn, coalition: red, country: Iran, airbase: havadarya, aircraft: Su-25, tasks: [CAS, INTERDICTION], airframes: 12, callsign: "601"}
+  - {id: tfb10, name: TFB-10 101st TFS, coalition: red, country: Iran, airbase: lengeh, aircraft: JF-17, tasks: [CAP, STRIKE, ANTISHIP, SEAD], airframes: 12, callsign: "701"}
+  - {id: iraa3, name: IRIAA 3rd CSG, coalition: red, country: Iran, airbase: qeshm, aircraft: AH-1W, tasks: [CAS], airframes: 10, callsign: "801"}
+  - {id: tfb7t, name: TFB-7 71st TAS, coalition: red, country: Iran, airbase: shiraz, aircraft: C-130, tasks: [TRANSPORT], airframes: 6, callsign: "901"}
+fronts:
+  - {id: musandam, name: Musandam front, a: [25.78, 55.98], b: [26.17, 56.24], position: 0.45, width_km: 18}
+ground_units:
+  - {id: us1bct, name: 1st BCT 1st Armored Div, coalition: blue, country: USA, front: musandam, units: {M-1 Abrams: 6, M-2 Bradley: 6, M-109: 3, M1043 HMMWV Armament: 3}, supply_node: dep_sharjah}
+  - {id: uae_bde, name: UAE Land Forces Bde, coalition: blue, country: United Arab Emirates, front: musandam, units: {Leclerc: 6, BMP-3: 6}, supply_node: dep_sharjah}
+  - {id: ir_84div, name: 84th Infantry Div, coalition: red, country: Iran, front: musandam, units: {T-72B: 8, BMP-2: 6, BTR-80: 4, SAU Gvozdika: 3}, supply_node: port_bandarabbas}
+  - {id: ir_irgc, name: IRGC 3rd Bde, coalition: red, country: Iran, front: musandam, units: {T-55: 6, BMP-1: 6, Grad-URAL: 3}, supply_node: port_bandarabbas}
+sam_sites:
+  - {id: pat_dhafra, name: Patriot Al Dhafra, coalition: blue, country: USA, template: PATRIOT, lat: 24.28, lon: 54.50}
+  - {id: pat_minhad, name: Patriot Al Minhad, coalition: blue, country: USA, template: PATRIOT, lat: 25.05, lon: 55.33}
+  - {id: hawk_rak, name: HAWK Ras Al Khaimah, coalition: blue, country: United Arab Emirates, template: HAWK, lat: 25.65, lon: 55.92}
+  - {id: avg_front, name: Avenger Bty, coalition: blue, country: USA, template: AVENGER, lat: 25.88, lon: 56.03}
+  - {id: ewr_blue, name: CRC Jebel Hafeet, coalition: blue, country: United Arab Emirates, template: EWR-FPS117, lat: 24.07, lon: 55.77}
+  - {id: sa10_ba, name: SA-10 Bandar Abbas, coalition: red, country: Iran, template: SA-10, lat: 27.25, lon: 56.30}
+  - {id: sa5_shiraz, name: SA-5 Shiraz, coalition: red, country: Iran, template: SA-5, lat: 29.50, lon: 52.65}
+  - {id: sa2_ba, name: SA-2 Bandar Abbas, coalition: red, country: Iran, template: SA-2, lat: 27.18, lon: 56.15}
+  - {id: sa2_kish, name: SA-2 Kish, coalition: red, country: Iran, template: SA-2, lat: 26.54, lon: 53.96}
+  - {id: hawk_lengeh, name: HAWK Bandar Lengeh, coalition: red, country: Iran, template: HAWK, lat: 26.55, lon: 54.85}
+  - {id: hawk_qeshm, name: HAWK Qeshm, coalition: red, country: Iran, template: HAWK, lat: 26.78, lon: 55.95}
+  - {id: sa6_hava, name: SA-6 Havadarya, coalition: red, country: Iran, template: SA-6, lat: 27.15, lon: 56.12}
+  - {id: sa11_lar, name: SA-11 Lar, coalition: red, country: Iran, template: SA-11, lat: 27.66, lon: 54.40}
+  - {id: sa15_abumusa, name: SA-15 Abu Musa, coalition: red, country: Iran, template: SA-15, lat: 25.875, lon: 55.03}
+  - {id: sa15_tunb, name: SA-15 Greater Tunb, coalition: red, country: Iran, template: SA-15, lat: 26.26, lon: 55.31}
+  - {id: sa15_khasab, name: SA-15 Khasab, coalition: red, country: Iran, template: SA-15, lat: 26.18, lon: 56.24}
+  - {id: sa8_front, name: SA-8 Musandam, coalition: red, country: Iran, template: SA-8, lat: 26.05, lon: 56.15}
+  - {id: zu_front, name: ZU-23 Musandam, coalition: red, country: Iran, template: ZU-23, lat: 26.00, lon: 56.12}
+  - {id: ewr_red1, name: EWR Qeshm, coalition: red, country: Iran, template: EWR-1L13, lat: 26.80, lon: 56.00}
+  - {id: ewr_red2, name: EWR Kuh-e Genu, coalition: red, country: Iran, template: EWR-55G6, lat: 27.40, lon: 56.15}
+  - {id: ewr_red3, name: EWR Lavan, coalition: red, country: Iran, template: EWR-1L13, lat: 26.80, lon: 53.35}
+supply_nodes:
+  - {id: fac_mussafah, name: Mussafah industrial area, kind: factory, coalition: blue, country: United Arab Emirates, lat: 24.35, lon: 54.50, output: 600, stock: 1500, static_type: Tech_combine}
+  - {id: port_jebelali, name: Jebel Ali port, kind: port, coalition: blue, country: United Arab Emirates, lat: 25.01, lon: 55.06, output: 500, stock: 1200}
+  - {id: port_fujairah, name: Fujairah port, kind: port, coalition: blue, country: United Arab Emirates, lat: 25.17, lon: 56.36, output: 250, stock: 600}
+  - {id: dep_sharjah, name: Sharjah forward depot, kind: depot, coalition: blue, country: USA, lat: 25.40, lon: 55.60, stock: 700}
+  - {id: fac_shiraz, name: Shiraz industrial complex, kind: factory, coalition: red, country: Iran, lat: 29.62, lon: 52.48, output: 450, stock: 1200, static_type: Tech_combine}
+  - {id: fac_kerman, name: Kerman works, kind: factory, coalition: red, country: Iran, lat: 30.26, lon: 57.05, output: 250, stock: 600, static_type: Tech_combine}
+  - {id: port_bandarabbas, name: Bandar Abbas naval port, kind: port, coalition: red, country: Iran, lat: 27.14, lon: 56.21, output: 300, stock: 900}
+  - {id: rail_bandarabbas, name: Bandar Abbas rail yard, kind: rail, coalition: red, country: Iran, lat: 27.30, lon: 56.22, stock: 300, static_type: Railway_station}
+  - {id: dep_lar, name: Lar depot, kind: depot, coalition: red, country: Iran, lat: 27.68, lon: 54.34, stock: 500}
+  - {id: dep_lengeh, name: Bandar Lengeh depot, kind: depot, coalition: red, country: Iran, lat: 26.56, lon: 54.88, stock: 500}
+supply_routes:
+  - {src: fac_mussafah, dst: port_jebelali, capacity: 300, kind: road, convoy_units: {M 818: 5}}
+  - {src: port_jebelali, dst: dep_sharjah, capacity: 300, kind: road, convoy_units: {M 818: 5}}
+  - {src: port_fujairah, dst: dep_sharjah, capacity: 200, kind: road, convoy_units: {M 818: 4}}
+  - {src: fac_shiraz, dst: dep_lar, capacity: 250, kind: road, convoy_units: {KAMAZ Truck: 6}}
+  - {src: fac_kerman, dst: rail_bandarabbas, capacity: 250, kind: rail}
+  - {src: rail_bandarabbas, dst: port_bandarabbas, capacity: 300, kind: road, convoy_units: {KAMAZ Truck: 5}}
+  - {src: dep_lar, dst: dep_lengeh, capacity: 200, kind: road, convoy_units: {KAMAZ Truck: 5}}
+  - {src: dep_lar, dst: port_bandarabbas, capacity: 150, kind: road, convoy_units: {Ural-375: 5}}
+naval_groups:
+  - {id: ir_fleet, name: Hormuz Flotilla, coalition: red, country: Iran, units: [MOLNIYA, ALBATROS, La_Combattante_II, La_Combattante_II], lat: 26.75, lon: 56.35, track: [[26.75, 56.35], [26.55, 56.50]]}
+  - {id: ir_boats, name: IRGCN fast boats, coalition: red, country: Iran, units: [speedboat, speedboat, speedboat, speedboat], lat: 26.40, lon: 55.60, track: [[26.40, 55.60], [26.25, 55.90]]}
+  - {id: ir_sub, name: Kilo patrol, coalition: red, country: Iran, units: [KILO], lat: 25.80, lon: 57.10}
+  - {id: ir_convoy, name: Qeshm supply ships, coalition: red, country: Iran, units: [Dry-cargo ship-2, HandyWind], lat: 26.95, lon: 56.10, track: [[26.95, 56.10], [26.60, 56.30]], role: transport}

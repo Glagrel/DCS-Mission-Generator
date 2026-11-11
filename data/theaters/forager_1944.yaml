@@ -1,0 +1,86 @@
+id: forager_1944
+name: Operation Forager 1944
+description: >
+  July 1944. Saipan has fallen and Isley Field is operational. Task Force 58 and the Seventh
+  Air Force now turn on Guam, Tinian and Rota. NOTE: pydcs has no Marianas WWII terrain and
+  DCS has no Japanese aircraft; see docs/DECISIONS.md items 2 and 3 for the stand-ins used.
+terrain: MarianaIslandsWWII
+era:
+  year: 1944
+  kind: ww2
+  restrictions: ["WWII units only", "No AWACS, tankers, SAMs, guided weapons or helicopters", "Radar limited to simple ground/ship-controlled intercept"]
+start:
+  date: "1944-07-18"
+  time: "06:15"
+  weather: {temp_c: 28, wind_dir: 80, wind_ms: 6, cloud_base_m: 900, cloud_density: 5, cloud_thickness_m: 600, visibility_km: 40}
+coalitions:
+  blue:
+    name: United States
+    countries: [USA]
+    capabilities: [CARRIER, GCI]
+    doctrine: ww2
+  red:
+    name: Empire of Japan
+    countries: [Japan]
+    capabilities: [GCI]
+    doctrine: ww2
+    production: {airframes: 1, pilots: 1}
+bullseye: {blue: [14.30, 145.00], red: [14.30, 145.00]}
+airbases:
+  - {id: isley, dcs_name: Saipan Intl, coalition: blue, fuel: 500, supply_node: port_tanapag}
+  - {id: orote, dcs_name: Olf Orote, coalition: red, fuel: 150, supply_node: port_apra}
+  - {id: agana, dcs_name: Antonio B. Won Pat Intl, coalition: red, fuel: 220, supply_node: dep_agana}
+  - {id: tinian, dcs_name: Tinian Intl, coalition: red, fuel: 120, supply_node: port_tinian}
+  - {id: rota, dcs_name: Rota Intl, coalition: red, fuel: 120, supply_node: dep_rota}
+carriers:
+  - {id: cv_essex, name: USS Essex (TG 58.4), coalition: blue, country: USA, ships: [Essex], lat: 14.55, lon: 144.35, track: [[14.55, 144.35], [14.95, 144.45]], fuel: 400}
+  - {id: cv_bunker, name: USS Bunker Hill (TG 58.2), coalition: blue, country: USA, ships: [Essex], lat: 13.95, lon: 144.10, track: [[13.95, 144.10], [13.55, 144.05]], fuel: 400}
+squadrons:
+  - {id: vf15, name: VF-15, coalition: blue, country: USA, airbase: cv_essex, aircraft: F4U-1D, tasks: [CAP, ESCORT, SWEEP, CAS, STRIKE, ANTISHIP], airframes: 24, callsign: Rebel}
+  - {id: vf8, name: VF-8, coalition: blue, country: USA, airbase: cv_bunker, aircraft: F4U-1D, tasks: [CAP, ESCORT, CAS, STRIKE, ANTISHIP, RECON], airframes: 24, callsign: Ginger}
+  - {id: 19fs, name: 19th FS (318th FG), coalition: blue, country: USA, airbase: isley, aircraft: P-47D-40, tasks: [CAS, STRIKE, CAP, ESCORT], airframes: 20, callsign: Jug}
+  - {id: 333fs, name: 333rd FS (318th FG), coalition: blue, country: USA, airbase: isley, aircraft: P-51D-30-NA, tasks: [ESCORT, CAP, SWEEP, CAS], airframes: 16, callsign: Pony}
+  - {id: 48bs, name: 48th BS (Medium), coalition: blue, country: USA, airbase: isley, aircraft: A-20G, tasks: [STRIKE, INTERDICTION], airframes: 12, callsign: Havoc}
+  - {id: 26bs, name: 26th BS (Heavy), coalition: blue, country: USA, airbase: isley, aircraft: B-17G, tasks: [STRIKE], airframes: 10, callsign: Fortress}
+  - {id: 9tcs, name: 9th TCS, coalition: blue, country: USA, airbase: isley, aircraft: C-47, tasks: [TRANSPORT], airframes: 6, callsign: Gooney}
+  - {id: ku261, name: 261st Kokutai, coalition: red, country: Japan, airbase: orote, aircraft: Bf-109K-4, tasks: [CAP, ESCORT, SWEEP], airframes: 4, skill: Average, callsign: Tora}
+  - {id: ku263, name: 263rd Kokutai, coalition: red, country: Japan, airbase: agana, aircraft: Bf-109K-4, tasks: [CAP, ESCORT, SWEEP, ANTISHIP], airframes: 16, callsign: Hyo}
+  - {id: ku343, name: 343rd Kokutai, coalition: red, country: Japan, airbase: tinian, aircraft: FW-190A8, tasks: [CAP, CAS, STRIKE, ANTISHIP], airframes: 4, callsign: Hayabusa}
+  - {id: ku521, name: 521st Kokutai, coalition: red, country: Japan, airbase: agana, aircraft: Ju-88A4, tasks: [STRIKE, ANTISHIP], airframes: 6, skill: Average, callsign: Washi}
+  - {id: ku265, name: 265th Kokutai, coalition: red, country: Japan, airbase: rota, aircraft: FW-190A8, tasks: [CAP, STRIKE, ANTISHIP], airframes: 8, callsign: Shishi}
+fronts:
+  - {id: guam, name: Guam beachhead, a: [13.39, 144.66], b: [13.52, 144.85], position: 0.2, width_km: 10}
+  - {id: tinian_front, name: Tinian landing, a: [15.08, 145.62], b: [14.95, 145.65], position: 0.15, width_km: 6}
+ground_units:
+  - {id: us3mar, name: 3rd Marine Division, coalition: blue, country: USA, front: guam, units: {M4_Sherman: 6, M2A1_halftrack: 4, M2A1-105: 3, soldier_wwii_us: 8}, supply_node: port_tanapag}
+  - {id: us4mar, name: 4th Marine Division, coalition: blue, country: USA, front: tinian_front, units: {M4_Sherman: 5, M8_Greyhound: 3, M2A1-105: 3, soldier_wwii_us: 8}, supply_node: port_tanapag}
+  - {id: ja29div, name: 29th Division, coalition: red, country: Japan, front: guam, units: {Type_89_I_Go: 5, Type_98_Ke_Ni: 5, Type_98_So_Da: 3, Type_94_Truck: 4}, supply_node: dep_agana}
+  - {id: ja50rgt, name: 50th Infantry Regiment, coalition: red, country: Japan, front: tinian_front, units: {Type_98_Ke_Ni: 6, Type_98_So_Da: 3, Type_94_Truck: 3}, supply_node: port_tinian}
+sam_sites:
+  - {id: aa_orote, name: Orote AA, coalition: red, country: Japan, template: JP-AA-75, lat: 13.44, lon: 144.63}
+  - {id: aa_orote_l, name: Orote light AA, coalition: red, country: Japan, template: JP-AA-25, lat: 13.435, lon: 144.645}
+  - {id: aa_agana, name: Agana AA, coalition: red, country: Japan, template: JP-AA-75, lat: 13.48, lon: 144.79}
+  - {id: aa_agana_l, name: Agana light AA, coalition: red, country: Japan, template: JP-AA-25, lat: 13.485, lon: 144.805}
+  - {id: aa_apra, name: Apra Harbor AA, coalition: red, country: Japan, template: JP-AA-25, lat: 13.45, lon: 144.67}
+  - {id: aa_tinian, name: Tinian AA, coalition: red, country: Japan, template: JP-AA-75, lat: 14.99, lon: 145.62}
+  - {id: aa_tinian_l, name: Tinian light AA, coalition: red, country: Japan, template: JP-AA-25, lat: 14.97, lon: 145.63}
+  - {id: aa_rota, name: Rota AA, coalition: red, country: Japan, template: JP-AA-25, lat: 14.17, lon: 145.24}
+  - {id: radar_guam, name: Mt Tenjo radar, coalition: red, country: Japan, template: RADAR-WW2, lat: 13.41, lon: 144.70}
+  - {id: aa_isley, name: Isley Field AA, coalition: blue, country: USA, template: BOFORS-40, lat: 15.12, lon: 145.72}
+  - {id: aa_isley_q, name: Isley quad .50s, coalition: blue, country: USA, template: M45-QUAD, lat: 15.115, lon: 145.735}
+  - {id: radar_saipan, name: Mt Tapochau radar, coalition: blue, country: USA, template: RADAR-WW2, lat: 15.19, lon: 145.74}
+supply_nodes:
+  - {id: port_tanapag, name: Tanapag Harbor, kind: port, coalition: blue, country: USA, lat: 15.22, lon: 145.73, output: 400, stock: 800}
+  - {id: dep_isley, name: Isley supply dump, kind: depot, coalition: blue, country: USA, lat: 15.13, lon: 145.70, stock: 400, static_type: Tent01, n_objects: 6}
+  - {id: port_apra, name: Apra Harbor, kind: port, coalition: red, country: Japan, lat: 13.44, lon: 144.665, output: 110, stock: 250}
+  - {id: dep_agana, name: Agana supply dump, kind: depot, coalition: red, country: Japan, lat: 13.47, lon: 144.75, stock: 250, n_objects: 5}
+  - {id: port_tinian, name: Tinian Town harbor, kind: port, coalition: red, country: Japan, lat: 14.97, lon: 145.62, output: 60, stock: 150}
+  - {id: dep_rota, name: Rota supply dump, kind: depot, coalition: red, country: Japan, lat: 14.15, lon: 145.20, stock: 120, n_objects: 3}
+supply_routes:
+  - {src: port_tanapag, dst: dep_isley, capacity: 300, kind: road, convoy_units: {CCKW_353: 5}}
+  - {src: port_apra, dst: dep_agana, capacity: 120, kind: road, convoy_units: {Type_94_Truck: 5}}
+  - {src: port_apra, dst: dep_rota, capacity: 50, kind: sea}
+  - {src: port_apra, dst: port_tinian, capacity: 40, kind: sea}
+naval_groups:
+  - {id: tf52, name: TF 52 transports, coalition: blue, country: USA, units: [USS_Samuel_Chase, LST_Mk2, LST_Mk2], lat: 13.38, lon: 144.55, role: transport}
+  - {id: ja_convoy, name: Supply convoy Marus, coalition: red, country: Japan, units: [Dry-cargo ship-1, Dry-cargo ship-2], lat: 13.85, lon: 144.95, track: [[13.85, 144.95], [14.10, 145.10]], role: transport}

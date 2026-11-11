@@ -15,3 +15,12 @@
 - `sortie/models.py` (entities), `models_ato.py` (ATO, results), `db.py` (document store +
   history), `state.py` (load/mutate/save whole campaign, seeded RNG, clock), `geo.py`.
 - 9 tests pass.
+
+## Phase 2 — theater templates
+- `sortie/units.py` (pydcs lookup, era filter, ratings), `terrain.py` (terrain abstraction with
+  documented Marianas fallback), `theater.py` (schema + cross-validation), `campaign.py`
+  (career creation, owned-module gate), `debrief/career.py` (ranks/awards).
+- Data: `unit_eras.yaml`, `sam_templates.yaml`, three templates. All validate against pydcs.
+- Revised brief received mid-phase: added DB migrations (`PRAGMA user_version`), `events` and
+  `cursors` tables, `sortie/logs.py` (JSON-lines logging), `pyproject.toml`.
+- 27 tests pass.

@@ -1,0 +1,133 @@
+id: coldwar_1985
+name: Cold War Gone Hot 1985
+description: >
+  June 1985. Warsaw Pact forces cross the Inner German Border on the North German Plain.
+  NATO's 2 ATAF fights to hold the line between Hamburg and the Harz.
+terrain: GermanyCW
+era:
+  year: 1985
+  kind: coldwar
+  restrictions: ["No aircraft, weapons or air defences introduced after 1985", "No Warsaw Pact AWACS or tankers (GCI only)"]
+start:
+  date: "1985-06-10"
+  time: "05:30"
+  weather: {temp_c: 16, wind_dir: 250, wind_ms: 4, cloud_base_m: 1800, cloud_density: 4, cloud_thickness_m: 400, visibility_km: 30}
+coalitions:
+  blue:
+    name: NATO
+    countries: [USA, Germany, UK]
+    capabilities: [AWACS, TANKER, GCI, SEAD, PGM, HELO, RADAR_SAM, NIGHT]
+    doctrine: nato
+  red:
+    name: Warsaw Pact
+    countries: [USSR, GDR]
+    capabilities: [GCI, SEAD, HELO, RADAR_SAM]
+    doctrine: soviet
+bullseye: {blue: [52.30, 10.50], red: [52.40, 12.00]}
+airbases:
+  - {id: gutersloh, dcs_name: Gutersloh, coalition: blue, fuel: 1200, supply_node: dep_bielefeld}
+  - {id: wunstorf, dcs_name: Wunstorf, coalition: blue, fuel: 1000, supply_node: dep_minden}
+  - {id: buckeburg, dcs_name: Buckeburg, coalition: blue, fuel: 600, supply_node: dep_minden}
+  - {id: norvenich, dcs_name: Norvenich, coalition: blue, fuel: 1400, supply_node: fac_ruhr}
+  - {id: cologne, dcs_name: Cologne, coalition: blue, fuel: 1500, supply_node: fac_ruhr}
+  - {id: nordholz, dcs_name: Nordholz, coalition: blue, fuel: 900, supply_node: port_bremerhaven}
+  - {id: bremen, dcs_name: Bremen, coalition: blue, fuel: 700, supply_node: port_bremerhaven}
+  - {id: wittstock, dcs_name: Wittstock, coalition: red, fuel: 1000, supply_node: dep_ludwigslust}
+  - {id: falkenberg, dcs_name: Falkenberg, coalition: red, fuel: 1000, supply_node: fac_berlin}
+  - {id: brand, dcs_name: Brand, coalition: red, fuel: 1200, supply_node: fac_berlin}
+  - {id: templin, dcs_name: Templin, coalition: red, fuel: 1100, supply_node: fac_berlin}
+  - {id: brandis, dcs_name: Brandis, coalition: red, fuel: 900, supply_node: rail_magdeburg}
+  - {id: larz, dcs_name: Larz, coalition: red, fuel: 1000, supply_node: dep_ludwigslust}
+  - {id: werneuchen, dcs_name: Werneuchen, coalition: red, fuel: 900, supply_node: fac_berlin}
+  - {id: neubrandenburg, dcs_name: Neubrandenburg, coalition: red, fuel: 800, supply_node: port_rostock}
+  - {id: peenemunde, dcs_name: Peenemunde, coalition: red, fuel: 800, supply_node: port_rostock}
+  - {id: parchim, dcs_name: Parchim, coalition: red, fuel: 600, supply_node: dep_ludwigslust}
+  - {id: stendal, dcs_name: Stendal, coalition: red, fuel: 800, supply_node: dep_stendal}
+  - {id: sperenberg, dcs_name: Sperenberg, coalition: red, fuel: 900, supply_node: fac_berlin}
+squadrons:
+  - {id: 53tfs, name: 53rd TFS, coalition: blue, country: USA, airbase: gutersloh, aircraft: F-15C, tasks: [CAP, ESCORT, SWEEP], airframes: 18, callsign: Eagle}
+  - {id: 480tfs, name: 480th TFS, coalition: blue, country: USA, airbase: wunstorf, aircraft: F-4E-45MC, tasks: [SEAD, STRIKE, CAP, ESCORT], airframes: 18, callsign: Rhino}
+  - {id: 10tfs, name: 10th TFS, coalition: blue, country: USA, airbase: norvenich, aircraft: F-16A, tasks: [CAP, STRIKE, CAS, INTERDICTION], airframes: 18, callsign: Viper}
+  - {id: 92tfs, name: 92nd TFS, coalition: blue, country: USA, airbase: buckeburg, aircraft: A-10A, tasks: [CAS, INTERDICTION], airframes: 18, callsign: Hog}
+  - {id: jbg31, name: JaboG 31, coalition: blue, country: Germany, airbase: norvenich, aircraft: Tornado IDS, tasks: [STRIKE, SEAD, INTERDICTION, RECON], airframes: 16, callsign: Tiger}
+  - {id: mfg3, name: MFG 2, coalition: blue, country: Germany, airbase: nordholz, aircraft: Tornado IDS, tasks: [ANTISHIP, STRIKE, RECON], airframes: 12, callsign: Hai}
+  - {id: jg71, name: JG 71 Richthofen, coalition: blue, country: Germany, airbase: bremen, aircraft: F-4E, tasks: [CAP, ESCORT, SWEEP], airframes: 16, callsign: Phantom}
+  - {id: raf17, name: No. 17 Sqn RAF, coalition: blue, country: UK, airbase: gutersloh, aircraft: Tornado GR4, tasks: [STRIKE, INTERDICTION, SEAD], airframes: 12, callsign: Vulcan}
+  - {id: 960awacs, name: 960th AWACS, coalition: blue, country: USA, airbase: cologne, aircraft: E-3A, tasks: [AWACS], airframes: 3, callsign: Magic}
+  - {id: 11ars, name: 11th ARS, coalition: blue, country: USA, airbase: cologne, aircraft: KC-135, tasks: [TANKER], airframes: 4, callsign: Texaco}
+  - {id: 37tas, name: 37th TAS, coalition: blue, country: USA, airbase: cologne, aircraft: C-130, tasks: [TRANSPORT], airframes: 8, callsign: Herky}
+  - {id: hfr10, name: Heeresflieger Rgt 10, coalition: blue, country: Germany, airbase: buckeburg, aircraft: UH-1H, tasks: [TRANSPORT, CAS], airframes: 12, callsign: Huey}
+  - {id: 33iap, name: 33rd IAP, coalition: red, country: USSR, airbase: wittstock, aircraft: MiG-29A, tasks: [CAP, ESCORT, SWEEP], airframes: 20, callsign: "101"}
+  - {id: 31giap, name: 31st GvIAP, coalition: red, country: USSR, airbase: falkenberg, aircraft: MiG-23MLD, tasks: [CAP, ESCORT, SWEEP], airframes: 24, callsign: "201"}
+  - {id: 116bap, name: 116th GvBAP, coalition: red, country: USSR, airbase: brand, aircraft: Su-24M, tasks: [STRIKE, SEAD, INTERDICTION], airframes: 18, callsign: "301"}
+  - {id: 20apib, name: 20th GvAPIB, coalition: red, country: USSR, airbase: templin, aircraft: Su-17M4, tasks: [STRIKE, CAS, SEAD], airframes: 20, callsign: "401"}
+  - {id: 357oshap, name: 357th OShAP, coalition: red, country: USSR, airbase: brandis, aircraft: Su-25, tasks: [CAS, INTERDICTION], airframes: 20, callsign: "501"}
+  - {id: 19apib, name: 19th GvAPIB, coalition: red, country: USSR, airbase: larz, aircraft: MiG-27K, tasks: [STRIKE, CAS, INTERDICTION], airframes: 20, callsign: "601"}
+  - {id: 931orap, name: 931st OGRAP, coalition: red, country: USSR, airbase: werneuchen, aircraft: MiG-25RBT, tasks: [RECON], airframes: 8, callsign: "701"}
+  - {id: jg2, name: JG-2 Juri Gagarin, coalition: red, country: GDR, airbase: neubrandenburg, aircraft: MiG-21Bis, tasks: [CAP, ESCORT, CAS], airframes: 24, callsign: "801"}
+  - {id: jg9, name: JG-9 Heinrich Rau, coalition: red, country: GDR, airbase: peenemunde, aircraft: MiG-23MLD, tasks: [CAP, SWEEP], airframes: 18, callsign: "901"}
+  - {id: khg5, name: KHG-5, coalition: red, country: GDR, airbase: parchim, aircraft: Mi-24V, tasks: [CAS], airframes: 14, callsign: "111"}
+  - {id: 226osap, name: 226th OSAP, coalition: red, country: USSR, airbase: sperenberg, aircraft: An-26B, tasks: [TRANSPORT], airframes: 8, callsign: "121"}
+  - {id: 178ovp, name: 178th OVP, coalition: red, country: USSR, airbase: stendal, aircraft: Mi-8MT, tasks: [TRANSPORT, CAS], airframes: 14, callsign: "131"}
+fronts:
+  - {id: hannover_axis, name: Hannover axis, a: [52.40, 9.75], b: [52.20, 12.00], position: 0.5, width_km: 40}
+  - {id: hamburg_axis, name: Hamburg axis, a: [53.55, 10.00], b: [53.63, 11.40], position: 0.5, width_km: 30}
+ground_units:
+  - {id: us2ad, name: US 2nd Armored Div (Fwd), coalition: blue, country: USA, front: hannover_axis, units: {M-1 Abrams: 6, M-2 Bradley: 6, M-109: 3, M-113: 3}, supply_node: dep_minden}
+  - {id: ge1pz, name: 1. Panzerdivision, coalition: blue, country: Germany, front: hannover_axis, units: {Leopard-2: 6, Marder: 6, Leopard1A3: 4}, supply_node: dep_minden}
+  - {id: uk1ad, name: UK 1st Armoured Div, coalition: blue, country: UK, front: hannover_axis, units: {Chieftain_mk3: 8, M-109: 3}, supply_node: dep_bielefeld}
+  - {id: ge6pzg, name: 6. Panzergrenadierdivision, coalition: blue, country: Germany, front: hamburg_axis, units: {Leopard1A3: 6, Marder: 6, M-113: 4}, supply_node: port_hamburg}
+  - {id: su3sa, name: 3rd Shock Army, coalition: red, country: USSR, front: hannover_axis, units: {T-80B: 10, BMP-2: 8, SAU Gvozdika: 4, BTR-70: 4}, supply_node: rail_magdeburg}
+  - {id: su2gta, name: 2nd Guards Tank Army, coalition: red, country: USSR, front: hannover_axis, units: {T-72B: 10, BMP-1: 8, Grad-URAL: 3}, supply_node: dep_stendal}
+  - {id: nva5a, name: NVA 5th Army, coalition: red, country: GDR, front: hamburg_axis, units: {T-55: 10, BMP-1: 6, BTR-70: 6, SAU Akatsia: 3}, supply_node: dep_schwerin}
+sam_sites:
+  - {id: hawk_hann, name: HAWK Hannover, coalition: blue, country: USA, template: HAWK, lat: 52.33, lon: 9.90}
+  - {id: hawk_celle, name: HAWK Celle, coalition: blue, country: Germany, template: HAWK, lat: 52.62, lon: 9.95}
+  - {id: hawk_hamb, name: HAWK Hamburg, coalition: blue, country: Germany, template: HAWK, lat: 53.60, lon: 9.85}
+  - {id: pat_gut, name: Patriot Gutersloh, coalition: blue, country: USA, template: PATRIOT, lat: 51.95, lon: 8.40}
+  - {id: rol_wun, name: Roland Wunstorf, coalition: blue, country: Germany, template: ROLAND, lat: 52.46, lon: 9.45}
+  - {id: gep_front, name: Gepard Bty, coalition: blue, country: Germany, template: GEPARD, lat: 52.35, lon: 10.30}
+  - {id: rap_gut, name: Rapier Gutersloh, coalition: blue, country: UK, template: RAPIER, lat: 51.93, lon: 8.32}
+  - {id: ewr_blue1, name: CRC Brockzetel, coalition: blue, country: Germany, template: EWR-FPS117, lat: 52.80, lon: 9.30}
+  - {id: sa6_3sa, name: SA-6 3rd Shock Army, coalition: red, country: USSR, template: SA-6, lat: 52.28, lon: 11.25}
+  - {id: sa6_2gta, name: SA-6 2nd Gds Tank Army, coalition: red, country: USSR, template: SA-6, lat: 52.55, lon: 11.35}
+  - {id: sa8_front, name: SA-8 Bty, coalition: red, country: USSR, template: SA-8, lat: 52.33, lon: 11.05}
+  - {id: sa13_front, name: SA-13 Bty, coalition: red, country: USSR, template: SA-13, lat: 52.25, lon: 11.00}
+  - {id: zsu_front, name: ZSU-23-4 Bty, coalition: red, country: USSR, template: ZSU-23-4, lat: 52.30, lon: 10.98}
+  - {id: sa6_nva, name: SA-6 NVA 5th Army, coalition: red, country: GDR, template: SA-6, lat: 53.60, lon: 11.10}
+  - {id: sa3_stendal, name: SA-3 Stendal, coalition: red, country: USSR, template: SA-3, lat: 52.65, lon: 11.85}
+  - {id: sa2_magd, name: SA-2 Magdeburg, coalition: red, country: GDR, template: SA-2, lat: 52.15, lon: 11.70}
+  - {id: sa2_schwerin, name: SA-2 Schwerin, coalition: red, country: GDR, template: SA-2, lat: 53.60, lon: 11.45}
+  - {id: sa3_witt, name: SA-3 Wittstock, coalition: red, country: USSR, template: SA-3, lat: 53.18, lon: 12.50}
+  - {id: sa10_berlin, name: SA-10 Berlin, coalition: red, country: USSR, template: SA-10, lat: 52.60, lon: 13.10}
+  - {id: sa5_rostock, name: SA-5 Rostock, coalition: red, country: GDR, template: SA-5, lat: 54.02, lon: 12.35}
+  - {id: ewr_red1, name: EWR Brocken, coalition: red, country: USSR, template: EWR-P19, lat: 51.80, lon: 10.62}
+  - {id: ewr_red2, name: EWR Altmark, coalition: red, country: USSR, template: EWR-1L13, lat: 52.75, lon: 11.55}
+  - {id: ewr_red3, name: EWR Mecklenburg, coalition: red, country: GDR, template: EWR-55G6, lat: 53.50, lon: 12.00}
+supply_nodes:
+  - {id: fac_ruhr, name: Ruhr industrial area, kind: factory, coalition: blue, country: Germany, lat: 51.22, lon: 6.78, output: 600, stock: 1500, static_type: Tech_combine}
+  - {id: port_bremerhaven, name: Bremerhaven (REFORGER port), kind: port, coalition: blue, country: USA, lat: 53.54, lon: 8.58, output: 500, stock: 1200}
+  - {id: port_hamburg, name: Hamburg docks, kind: port, coalition: blue, country: Germany, lat: 53.53, lon: 9.95, output: 250, stock: 600}
+  - {id: dep_bielefeld, name: Bielefeld depot, kind: depot, coalition: blue, country: UK, lat: 52.02, lon: 8.53, stock: 700}
+  - {id: dep_minden, name: Minden depot, kind: depot, coalition: blue, country: Germany, lat: 52.29, lon: 8.92, stock: 700}
+  - {id: rail_hannover, name: Hannover rail yard, kind: rail, coalition: blue, country: Germany, lat: 52.36, lon: 9.62, stock: 300, static_type: Railway_station}
+  - {id: fac_berlin, name: East Berlin industrial area, kind: factory, coalition: red, country: GDR, lat: 52.51, lon: 13.50, output: 650, stock: 1500, static_type: Tech_combine}
+  - {id: port_rostock, name: Rostock port, kind: port, coalition: red, country: GDR, lat: 54.09, lon: 12.13, output: 450, stock: 1000}
+  - {id: rail_magdeburg, name: Magdeburg rail yard, kind: rail, coalition: red, country: GDR, lat: 52.13, lon: 11.63, stock: 500, static_type: Railway_station}
+  - {id: br_wittenberge, name: Wittenberge Elbe bridge, kind: bridge, coalition: red, country: GDR, lat: 53.00, lon: 11.75, stock: 0, n_objects: 2}
+  - {id: dep_stendal, name: Stendal depot, kind: depot, coalition: red, country: USSR, lat: 52.60, lon: 11.86, stock: 700}
+  - {id: dep_schwerin, name: Schwerin depot, kind: depot, coalition: red, country: GDR, lat: 53.63, lon: 11.41, stock: 600}
+  - {id: dep_ludwigslust, name: Ludwigslust depot, kind: depot, coalition: red, country: USSR, lat: 53.33, lon: 11.50, stock: 600}
+supply_routes:
+  - {src: fac_ruhr, dst: dep_bielefeld, capacity: 300, kind: rail}
+  - {src: dep_bielefeld, dst: dep_minden, capacity: 250, kind: road, convoy_units: {M 818: 5}}
+  - {src: dep_minden, dst: rail_hannover, capacity: 250, kind: rail}
+  - {src: port_bremerhaven, dst: dep_minden, capacity: 300, kind: rail}
+  - {src: port_bremerhaven, dst: port_hamburg, capacity: 150, kind: road, convoy_units: {M 818: 5}}
+  - {src: fac_berlin, dst: rail_magdeburg, capacity: 350, kind: rail}
+  - {src: fac_berlin, dst: dep_stendal, capacity: 250, kind: rail}
+  - {src: rail_magdeburg, dst: dep_stendal, capacity: 200, kind: road, convoy_units: {Ural-375: 6}}
+  - {src: port_rostock, dst: dep_schwerin, capacity: 250, kind: rail}
+  - {src: dep_stendal, dst: br_wittenberge, capacity: 200, kind: road, convoy_units: {Ural-375: 6}}
+  - {src: br_wittenberge, dst: dep_ludwigslust, capacity: 200, kind: road, convoy_units: {KAMAZ Truck: 6}}
+  - {src: dep_schwerin, dst: dep_ludwigslust, capacity: 150, kind: road, convoy_units: {KAMAZ Truck: 5}}

@@ -43,3 +43,17 @@ Entries are numbered; **FLAG** marks things that need in-sim verification or lat
     `FlightControl-Master/MOOSE_INCLUDE` repo (`Moose_Include_Static/Moose_.lua`) into
     `vendor/moose/`. Offline: place `Moose_.lua` there by hand. Missions still build without
     it (SORTIE's own Lua does not depend on MOOSE; only the ATC layer does).
+13. **Revised brief (project boundaries).** The coding agent never writes outside the project
+    folder and never runs the integration scripts. The *application*, when the user clicks
+    "Generate next mission", writes the `.miz` and runtime folder under
+    `<SavedGames>\Missions\SORTIE\` (that is the product's function and is configurable via
+    `output_dir`). All tests use temp directories.
+14. **Schema migrations:** ordered `MIGRATIONS` list in `sortie/db.py`, version in
+    `PRAGMA user_version`. Entity documents are pydantic models with defaults, so adding
+    fields needs no migration.
+15. **Gulf template:** the fictional "Farsian Republic" uses the DCS country `Iran`.
+    Cold War template uses Tornado GR4 as the RAF Tornado GR1 stand-in and F-4E for the
+    Luftwaffe F-4F (pydcs has neither).
+16. **Fronts are an axis** (blue rear anchor → red rear anchor) with a position 0..1; ground
+    formations are placed ~3 km either side of the line at mission-build time. Simple, but it
+    gives front movement, CAS targets and base capture (an airbase overrun by the line flips).

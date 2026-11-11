@@ -5,7 +5,7 @@ run tests, commit.
 
 - [x] **Phase 0** Setup, research, docs, repo, venv, tests scaffold
 - [x] **Phase 1** Data model + SQLite campaign state
-- [ ] **Phase 2** Theater template format + the 3 templates
+- [x] **Phase 2** Theater template format + the 3 templates
 - [ ] **Phase 3** Between-sortie war simulator (production, supply, repair, abstract AI resolution, attrition)
 - [ ] **Phase 4** ATO generator + player assignment
 - [ ] **Phase 5** Mission builder (pydcs): flights, ground/naval within budget, warehouses, SP + co-op slots, briefing, radio plan

@@ -1,0 +1,54 @@
+# Introduction year per pydcs type id. Types not listed are treated as year 2000.
+aircraft:
+  # WW2
+  {F4U-1D: 1944, F4U-1D_CW: 1944, P-51D: 1944, P-51D-30-NA: 1944, TF-51D: 1944, P-47D-30: 1944,
+   P-47D-30bl1: 1944, P-47D-40: 1944, SpitfireLFMkIX: 1943, SpitfireLFMkIXCW: 1943,
+   MosquitoFBMkVI: 1943, Bf-109K-4: 1944, FW-190A8: 1944, FW-190D9: 1944, I-16: 1939, La-7: 1944,
+   A-20G: 1943, B-17G: 1943, Ju-88A4: 1940, C-47: 1942,
+   # Cold war
+   F-86F Sabre: 1952, F-86F_FC: 1952, MiG-15bis: 1950, MiG-15bis_FC: 1950, MiG-19P: 1957,
+   F-100D: 1956, MiG-21Bis: 1972, F-4E: 1967, F-4E-45MC: 1974, F-5E: 1973, F-5E-3: 1976,
+   F-5E-3_FC: 1976, AJS37: 1972, Mirage-F1CE: 1975, Mirage-F1EE: 1982, Mirage-F1BE: 1980,
+   Mirage-F1C: 1973, Mirage-F1EQ: 1980, F-14A: 1974, F-14A-95-GR: 1976,
+   F-14A-135-GR-Early: 1980, F-14A-135-GR: 1984, F-15C: 1979, F-16A: 1979, A-10A: 1977,
+   A6E: 1971, F/A-18A: 1983, Tornado IDS: 1981, Tornado GR4: 1982, M-2000C: 1984,
+   MiG-23MLD: 1982, MiG-25PD: 1979, MiG-25RBT: 1972, MiG-27K: 1978, MiG-29A: 1983,
+   MiG-29 Fulcrum: 1983, MiG-31: 1981, Su-17M4: 1981, Su-24M: 1983, Su-24MR: 1983, Su-25: 1981,
+   Su-27: 1985, Tu-22M3: 1983, Tu-95MS: 1981, Tu-142: 1972, L-39C: 1972, L-39ZA: 1976,
+   C-101EB: 1980, C-101CC: 1983, MB-339A: 1979, Hawk: 1976, E-3A: 1977, E-2C: 1973, A-50: 1985,
+   KC-135: 1957, KC135MPRS: 1957, KC130: 1962, IL-78M: 1984, IL-76MD: 1974, S-3B: 1975,
+   S-3B Tanker: 1975, C-130: 1956, An-26B: 1969, An-30M: 1971, Yak-40: 1968, B-52H: 1961,
+   F-117A: 1983,
+   # Post cold war
+   F-14B: 1987, F-15E: 1989, F-15ESE: 1989, AV8BNA: 1989, F/A-18C: 1987, FA-18C_hornet: 1987,
+   F-16C bl.50: 1991, F-16C_50: 1991, MiG-29S: 1989, MiG-29G: 1990, Su-33: 1994, Su-25T: 1990,
+   Su-30: 1996, J-11A: 1998, A-10C: 2007, A-10C_2: 2012, JF-17: 2007, F-14BU: 1994,
+   Mirage 2000-5: 1997, B-1B: 1986, C-17A: 1995, C-130J-30: 1999}
+helicopters:
+  {UH-1H: 1967, Mi-8MT: 1977, Mi-24V: 1976, Mi-24P: 1981, Mi-26: 1983, CH-47D: 1982, CH-53E: 1981,
+   AH-1W: 1986, AH-64A: 1986, SA342M: 1978, SA342L: 1978, SA342Mistral: 1990, SA342Minigun: 1978,
+   UH-60A: 1979, SH-60B: 1984, SH-3W: 1961, Ka-27: 1982, OH-58D: 1985, OH58D: 1991, Ka-50: 1995,
+   Ka-50_3: 1998, AH-64D: 1997, AH-64D_BLK_II: 2003, CH-47Fbl1: 2007}
+ships:
+  {Essex: 1942, LST_Mk2: 1942, USS_Samuel_Chase: 1942, Higgins_boat: 1942, Uboat_VIIC: 1940,
+   Schnellboot_type_S130: 1943, Dry-cargo ship-1: 1940, Dry-cargo ship-2: 1940, ELNYA: 1960,
+   HandyWind: 1980, Forrestal: 1955, VINSON: 1982, PERRY: 1977, TICONDEROG: 1983,
+   LHA_Tarawa: 1976, CVN_71: 1986, CVN_72: 1989, CVN_73: 1992, Stennis: 1995, CVN_75: 1998,
+   USS_Arleigh_Burke_IIa: 1998, KUZNECOW: 1991, MOSCOW: 1983, MOLNIYA: 1979, ALBATROS: 1970,
+   REZKY: 1970, NEUSTRASH: 1990, PIOTR: 1998, KILO: 1980, La_Combattante_II: 1972,
+   speedboat: 1970}
+vehicles:
+  # WW2
+  {M4_Sherman: 1942, M4A4_Sherman_FF: 1944, M8_Greyhound: 1943, M2A1_halftrack: 1941,
+   M10_GMC: 1942, M2A1-105: 1941, CCKW_353: 1941, Willys_MB: 1941, soldier_wwii_us: 1941,
+   M4_Tractor: 1943, Type_89_I_Go: 1931, Type_98_Ke_Ni: 1942, Type_98_So_Da: 1941,
+   Type_94_Truck: 1934, Type_94_25mm_AA_Truck: 1936, soldier_mauser98: 1935,
+   # Cold war
+   T-55: 1958, T62M: 1983, T-72B: 1985, T-80B: 1978, BMP-1: 1966, BMP-2: 1980, BTR-60: 1960,
+   BTR-70: 1972, BTR-80: 1986, BRDM-2: 1962, MTLB: 1964, SAU Gvozdika: 1971, SAU Akatsia: 1971,
+   Grad-URAL: 1963, Ural-375: 1961, KAMAZ Truck: 1976, ATZ-10: 1970, GAZ-66: 1964,
+   Infantry AK: 1960, Soldier M4: 1964, M-60: 1960, M-1 Abrams: 1980, M-2 Bradley: 1981,
+   M-113: 1960, M-109: 1963, MLRS: 1983, Leopard1A3: 1973, Leopard-2: 1979, leopard-2A4: 1985,
+   Marder: 1971, Chieftain_mk3: 1969, TPZ: 1979, M 818: 1970, Hummer: 1984,
+   M978 HEMTT Tanker: 1982, LAV-25: 1983, AAV7: 1972, TYPE-59: 1959, Scud_B: 1964,
+   hy_launcher: 1980, Silkworm_SR: 1980, M1A2C_SEP_V3: 2020, T-90: 1992, Merkava_Mk4: 2004}
