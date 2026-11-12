@@ -31,6 +31,13 @@ SORTIE.show = async function (tab) {
   try { if (SORTIE.pages[tab]) await SORTIE.pages[tab](); } catch (e) { SORTIE.notice(e.message, 'err'); }
 };
 
+SORTIE.checkStale = async function () {
+  try {
+    const s = await SORTIE.api('GET', '/api/status');
+    if (s.restart_needed) SORTIE.notice('SORTIE has been updated on disk. Close the SORTIE window and start it again so the new version is used.', 'err');
+  } catch (e) { /* server not reachable: the page itself will say so */ }
+};
+
 SORTIE.refreshBar = async function () {
   const bar = $('#campaign-bar'), gen = $('#btn-generate');
   document.querySelectorAll('#tabs button[data-needs]').forEach((b) => { b.disabled = !SORTIE.cid; });
@@ -195,5 +202,6 @@ SORTIE.start = async function () {
   document.querySelectorAll('#tabs button').forEach((b) => { b.onclick = () => { SORTIE.notice(''); SORTIE.show(b.dataset.tab); }; });
   $('#btn-generate').onclick = () => SORTIE.generate();
   await SORTIE.refreshBar();
-  SORTIE.show(SORTIE.cid ? 'ato' : 'home');
+  await SORTIE.show(SORTIE.cid ? 'ato' : 'home');
+  SORTIE.checkStale();
 };

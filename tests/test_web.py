@@ -156,3 +156,20 @@ def test_coop_server_and_units_settings(client):
     assert body["extra_paths"] and (srv / "Missions" / "SORTIE" / body["filename"]).is_file()
     assert sum(x["seats"] for x in body["slots"]) == 5 and body["stats"]["kneeboard_pages"] >= 2
     assert client.put("/api/settings", json={"server_saved_games": ""}).json()["server_saved_games"] is None
+
+
+def test_unhandled_errors_are_reported_with_detail(client, monkeypatch):
+    from fastapi.testclient import TestClient
+    cid = _new(client).json()["id"]
+    monkeypatch.setattr(client.svc, "poll_live", lambda *_: (_ for _ in ()).throw(RuntimeError("boom")))
+    quiet = TestClient(client.app, raise_server_exceptions=False)
+    r = quiet.get(f"/api/campaigns/{cid}/live")
+    assert r.status_code == 500 and "RuntimeError: boom" in r.json()["detail"] and "sortie.log" in r.json()["detail"]
+    assert client.get("/api/status").json()["restart_needed"] is False
+
+
+def test_restart_needed_when_code_changes(client, monkeypatch):
+    from sortie.web import app as webapp
+    real = webapp.code_stamp()
+    monkeypatch.setattr(webapp, "code_stamp", lambda: real + 60)
+    assert client.get("/api/status").json()["restart_needed"] is True

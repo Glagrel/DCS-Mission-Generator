@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -20,6 +20,20 @@ from . import views
 
 log = logging.getLogger("sortie.web")
 STATIC = Path(__file__).resolve().parent / "static"
+CODE_DIR = Path(__file__).resolve().parent.parent
+
+
+def code_stamp() -> float:
+    """Newest modification time of SORTIE's own source files. The running server keeps the
+    code it started with, so a newer stamp on disk means it has to be restarted."""
+    newest = 0.0
+    for pattern in ("*.py", "*/*.py", "lua/*.lua", "web/static/*"):
+        for f in CODE_DIR.glob(pattern):
+            try:
+                newest = max(newest, f.stat().st_mtime)
+            except OSError:
+                pass
+    return newest
 
 
 class SettingsPatch(BaseModel):
@@ -49,6 +63,16 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
     svc = Service(store, settings)
     app = FastAPI(title="SORTIE", version="0.1.0")
     app.state.svc = svc
+    started_stamp = code_stamp()
+
+    @app.exception_handler(Exception)
+    async def unhandled(request, exc):
+        """Never answer with a bare 'Internal Server Error': log the traceback and say what failed."""
+        log.exception("unhandled error on %s %s", request.method, request.url.path)
+        hint = " SORTIE's files changed since this window was started: close it and start SORTIE again." \
+            if code_stamp() > started_stamp + 1 else ""
+        return JSONResponse(status_code=500, content={
+            "detail": f"Internal error ({type(exc).__name__}: {exc}).{hint} Details are in campaigns\\sortie.log.jsonl."})
 
     lock = threading.RLock()     # one SQLite connection: serialise requests (the GUI fetches in parallel)
 
@@ -77,6 +101,7 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
             "terrains": {k: terrain.is_supported(k) for k in terrain.TERRAINS},
             "difficulties": list(config.defaults(s)["difficulty"]), "voices": list(config.VOICE_ENGINES),
             "units": measure.labels(s.units),
+            "restart_needed": code_stamp() > started_stamp + 1,
             "server_output_dir": str(config.server_output_dir(s)) if config.server_output_dir(s) else None,
             "server_candidates": [str(p) for p in paths.server_saved_games_candidates()],
             "event_files": [str(p) for p in config.event_file_candidates(s)],
