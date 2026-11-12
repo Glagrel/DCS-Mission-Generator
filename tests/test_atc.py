@@ -234,3 +234,15 @@ def test_lua_voice_uses_msrs_when_available_else_text(tmp_path):
     env = _atc_env(tmp_path / "d", "nato", voice="off", extra_setup=fake)
     env.eval("SORTIE.atc.bogey_dope()")
     assert env.eval("#MOCK.spoken") == 0
+
+
+def test_lua_fills_placeholders_with_underscores(tmp_path):
+    """Seen in the first flown mission: 'Wind {wind_dir} at {wind_speed}' was not filled in."""
+    env = _atc_env(tmp_path, "nato")
+    env.run("SORTIE.atc.cfg.wind_dir = 270; SORTIE.atc.cfg.wind_speed = 5")
+    env.run("P1.air = false; MOCK.fire{ id = world.event.S_EVENT_ENGINE_STARTUP, initiator = P1 }")
+    said = list(env.eval("SORTIE.atc.said").values())
+    assert any("Wind 270 at 5" in t for t in said)
+    assert not any("{" in t for t in said)
+    assert env.eval("SORTIE.atc.render('startup', { callsign = 'A', tower = 'B', wind_dir = '090', wind_speed = '3', qnh = '2992' })") \
+        == P.render("nato", "startup", callsign="A", tower="B", wind_dir="090", wind_speed="3", qnh="2992")

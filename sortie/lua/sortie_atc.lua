@@ -40,7 +40,7 @@ end
 function A.render(key, params)
   local tpl = C.phrases and C.phrases[key]
   if not tpl then return '' end
-  return (string.gsub(tpl, '{(%w+)}', function(k)
+  return (string.gsub(tpl, '{([%w_]+)}', function(k)
     local v = params and params[k]
     if v == nil then return '{' .. k .. '}' end
     return tostring(v)

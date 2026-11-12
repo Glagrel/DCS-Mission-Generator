@@ -84,7 +84,7 @@ def test_warehouse_applied_and_reported(env):
     assert rep["phase"] == "start" and rep["base"] == "dhafra"
     assert rep["liquids_start"] == {"0": 1000, "1": 100, "2": 0, "3": 50}
     assert rep["weapons"]["weapons.missiles.AIM_120C"] == 24
-    env.run(wh + ".liquids[0] = 940; " + wh + ".weapon['weapons.missiles.AIM_120C'] = 20; MOCK.advance(121)")
+    env.run(wh + ".liquids[0] = 940; " + wh + ".weapon['weapons.missiles.AIM_120C'] = 20; MOCK.advance(301)")
     rep = [e for e in env.events() if e["ev"] == "warehouse"][-1]
     assert rep["phase"] == "periodic" and rep["liquids"]["0"] == 940
     assert rep["weapons"]["weapons.missiles.AIM_120C"] == 20

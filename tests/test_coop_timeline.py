@@ -517,3 +517,159 @@ def test_escort_task_starts_at_join_and_briefing_mentions_it(theaters, tmp_path)
                 assert "EscortTaskAction" not in [type(t).__name__ for t in g.points[0].tasks]
                 checked += 1
     assert checked >= 1
+
+
+# ---- loadouts, navaids, beacons, log fallback (second flown-mission feedback) --------------------------
+def _payload(*clsids, tasks=()):
+    return {"name": "x", "pylons": {i + 1: {"CLSID": c, "num": i + 1} for i, c in enumerate(clsids)},
+            "tasks": {i + 1: t for i, t in enumerate(tasks)}}
+
+
+AIM9X, AIM120, HARM = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}", "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}", \
+    "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}"
+TANK = "{FPU_8A_FUEL_TANK}"
+
+
+def test_loadout_scoring_prefers_tanks_and_self_defence():
+    full = _payload(AIM9X, HARM, HARM, AIM120, TANK, AIM120, HARM, HARM, AIM9X)
+    bare = _payload(HARM, HARM, HARM, HARM)
+    assert loadouts.score(full, "SEAD") > loadouts.score(bare, "SEAD") + 5
+    assert loadouts.score(_payload(), "SEAD") < 0                         # an empty payload never wins
+    assert loadouts.score(_payload(AIM9X, AIM120, TANK), "SEAD") < 0      # nothing for the task
+    assert loadouts.score(_payload(AIM9X, AIM120, AIM120, TANK), "CAP") > \
+        loadouts.score(_payload(AIM9X, HARM, HARM, TANK), "CAP")
+
+
+def test_pick_uses_score_and_user_named_payload(monkeypatch):
+    from dcs import task as dcstask
+    sead = dcstask.SEAD.id
+    table = {"A bare": _payload(HARM, HARM, tasks=[sead]),
+             "B full": _payload(AIM9X, HARM, HARM, TANK, AIM9X, tasks=[sead]),
+             "C empty": _payload(tasks=[sead])}
+    monkeypatch.setattr(loadouts, "_payloads", lambda ac: table)
+    assert loadouts.pick("FA-18C_hornet", "SEAD") == "B full"          # not simply the first by name
+    table["SORTIE SEAD"] = _payload(HARM, AIM9X)                        # your own payload always wins
+    assert loadouts.pick("FA-18C_hornet", "SEAD") == "SORTIE SEAD"
+    table.clear()
+    assert loadouts.pick("FA-18C_hornet", "SEAD") == ""
+
+
+def test_default_pylons_are_cleared_before_loading(theaters, tmp_path, monkeypatch):
+    monkeypatch.setattr(loadouts, "pick", lambda ac, t: "x")
+    monkeypatch.setattr(loadouts, "pylons", lambda ac, name: [(2, {"clsid": HARM}), (5, {"clsid": TANK})]
+                        if ac == "FA-18C_hornet" else None)
+    monkeypatch.setattr(loadouts, "describe", lambda ac, name: [])
+    st, ato, res, _ = _build(theaters, tmp_path, squadron="vfa27")
+    m = dcs.Mission()
+    m.load_file(res.path)
+    g = _flight_groups(m)[budget.gname("flt", ato.player_flight_id)]
+    for u in g.units:
+        assert sorted(u.pylons) == [2, 5]                                # nothing left over from a default
+
+
+def test_weapons_unlimited_by_default_fuel_limited(theaters, tmp_path):
+    st, ato, res, _ = _build(theaters, tmp_path)
+    m = dcs.Mission()
+    m.load_file(res.path)
+    ap = m.terrain.airports["Al Dhafra AFB"]
+    assert ap.unlimited_munitions is True and ap.unlimited_fuel is False
+    assert D["logistics"]["limit_munitions"] is False
+
+
+def test_carrier_and_tanker_beacons(theaters, tmp_path):
+    from sortie import navaids
+    st, ato, res, _ = _build(theaters, tmp_path, squadron="vfa27")
+    plan = navaids.carrier_plan(st)
+    assert plan["cvn73"]["tacan"] == "71X" and plan["cvn73"]["icls"] == 1 and plan["lha1"]["tacan"] == "72X"
+    assert len(plan["cvn73"]["ident"]) == 3
+    m = dcs.Mission()
+    m.load_file(res.path)
+    ship = m.find_group(budget.gname("nav", "cvn73"))
+    kinds = [type(t).__name__ for t in ship.points[0].tasks]
+    for k in ("ActivateBeaconCommand", "ActivateICLSCommand", "ActivateLink4Command", "ActivateACLSCommand"):
+        assert k in kinds, k
+    beacon = next(t for t in ship.points[0].tasks if type(t).__name__ == "ActivateBeaconCommand")
+    assert beacon.params["action"]["params"]["channel"] == 71
+    assert beacon.params["action"]["params"]["unitId"] == ship.units[0].id
+    nav = res.briefing["nav"]
+    assert nav["kind"] == "carrier" and nav["tacan"].startswith("71X") and nav["icls"] == 1
+    assert any("TACAN 71X" in line for line in res.briefing["nav_lines"])
+    assert "TACAN 71X" in m.description_text() and "ICLS channel 1" in m.description_text()
+    groups = _flight_groups(m)
+    tankers = [(n, v) for n, v in res.manifest.items() if v["kind"] == "flight" and v["task"] == "TANKER"
+               and v["coalition"] == "blue"]
+    assert tankers
+    for name, v in tankers:
+        cmds = [t for t in groups[name].points[0].tasks if type(t).__name__ == "ActivateBeaconCommand"]
+        assert cmds and v["tacan"]
+        listed = next(t for t in res.briefing["tankers"] if t["flight_id"] == v["id"])
+        assert v["tacan"].startswith(listed["tacan"])                     # same channel as briefed
+
+
+def test_no_carrier_beacons_in_1944(forager):
+    from sortie import navaids
+    assert navaids.carrier_plan(forager) == {}
+
+
+def test_parse_terrain_beacons_and_airfield_nav(tmp_path):
+    from sortie import navaids, terrain
+    text = """beacons = {
+\t{
+\t\tdisplay_name = _('');
+\t\tbeaconId = 'airfield4_3';
+\t\ttype = BEACON_TYPE_ILS_GLIDESLOPE;
+\t\tcallsign = 'RMA';
+\t\tfrequency = 108700000.000000;
+\t\tchannel = 24;
+\t};
+\t{
+\t\tdisplay_name = _('');
+\t\tbeaconId = 'airfield4_5';
+\t\ttype = BEACON_TYPE_ILS_LOCALIZER;
+\t\tcallsign = 'RMA';
+\t\tfrequency = 108700000.000000;
+\t\tchannel = 24;
+\t};
+\t{
+\t\tdisplay_name = _('AlDhafra');
+\t\tbeaconId = 'airfield4_8';
+\t\ttype = BEACON_TYPE_VORTAC;
+\t\tcallsign = 'MA';
+\t\tfrequency = 114900000.000000;
+\t\tchannel = 96;
+\t};
+}"""
+    parsed = navaids.parse_beacons(text)
+    assert parsed["airfield4_8"] == {"type": "VORTAC", "callsign": "MA", "frequency_hz": 114900000.0,
+                                     "channel": 96, "name": "AlDhafra"}
+    assert parsed["airfield4_5"]["type"] == "ILS_LOCALIZER"
+    inst = tmp_path / "DCS"
+    (inst / "Mods" / "terrains" / "PersianGulf").mkdir(parents=True)
+    (inst / "Mods" / "terrains" / "PersianGulf" / "beacons.lua").write_text(text)
+    navaids.terrain_beacons.cache_clear()
+    nav = navaids.airfield_nav(inst, "PersianGulf", terrain.new_terrain("PersianGulf").airports["Al Dhafra AFB"])
+    assert nav["tacan"] == "96X MA" and nav["vor"] == "114.90 MA"
+    assert nav["ils"] == [{"runway": "13R", "freq": 108.7, "ident": "RMA"}]
+    assert nav["atc"]["uhf"] == 251.1
+    navaids.terrain_beacons.cache_clear()
+    assert navaids.airfield_nav(None, "PersianGulf", terrain.new_terrain("PersianGulf").airports["Lar"])["ils"] == []
+    assert navaids.tanker_channel("31Y") == (31, "Y") and navaids.tanker_channel(None) == (None, None)
+
+
+def test_debrief_reads_events_from_server_dcs_log(tmp_path):
+    """Host not desanitised: events are SORTIE_EVT lines in the server's dcs.log."""
+    srv = tmp_path / "sg" / "DCS.server1"
+    svc = Service(Store(str(tmp_path / "s.db")), _settings(tmp_path, server_saved_games=str(srv)))
+    loadouts.configure(None)
+    cid = svc.new_campaign(CareerOptions(theater_id="gulf_crisis", squadron_id="77fs", callsign="Rook", seed=3))
+    res = svc.generate_mission(cid, with_moose=False)
+    st = svc.state(cid)
+    ev = simulate.simulate(simulate.manifest_with_sides(res.manifest, st), res.sortie_id,
+                           st.sortie.summary["player_group"])
+    logf = srv / "Logs" / "dcs.log"
+    logf.parent.mkdir(parents=True)
+    logf.write_text("".join(f"2026-11-12 01:43:48.716 INFO    SCRIPTING (Main): SORTIE_EVT {json.dumps(e)}\n"
+                            for e in ev) + "2026 INFO other line\n")
+    assert config.dcs_log_candidates(svc.settings)[-1] == logf
+    deb = svc.debrief(cid)
+    assert deb["state"] == "flown" and deb["pilot"]["sorties"] == 1

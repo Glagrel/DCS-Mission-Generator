@@ -147,6 +147,10 @@ def support_page(st: State, brief: Dict[str, Any], units: str) -> bytes:
         p.line("None this cycle.", small=True)
     if brief["target"].get("bullseye"):
         p.kv("Tgt bullseye", brief["target"]["bullseye"])
+    if brief.get("nav_lines"):
+        p.heading("Home: " + str(brief["nav"].get("name", "")))
+        for line in brief["nav_lines"][:8]:
+            p.line(line, small=True)
     p.heading("Air defences near route")
     sams = brief["threats"]["sams"]
     if sams:

@@ -127,7 +127,8 @@ def test_warehouses_written_from_state(theaters, tmp_path):
     m = dcs.Mission()
     m.load_file(res.path)
     ap = m.terrain.airports["Al Dhafra AFB"]
-    assert ap.coalition == "BLUE" and ap.unlimited_fuel is False and ap.unlimited_munitions is False
+    assert ap.coalition == "BLUE" and ap.unlimited_fuel is False
+    assert ap.unlimited_munitions is True            # limited weapons are opt-in (stores were stripped in DCS)
     assert ap.unlimited_aircrafts is True and ap.jet_init == 1500.0
     assert m.terrain.airports["Bandar Abbas Intl"].coalition == "RED"
     assert m.terrain.airports["Dubai Intl"].coalition == "NEUTRAL"       # not in the campaign

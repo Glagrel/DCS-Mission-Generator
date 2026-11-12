@@ -14,7 +14,7 @@ from dcs.point import PointAction
 from dcs.terrain.terrain import NoParkingSlotError
 from dcs.unit import Skill
 
-from .. import geo, terrain, units
+from .. import geo, navaids, terrain, units
 from ..models_ato import Ato, Flight, Package
 from ..state import State
 from . import clock, loadouts, slots
@@ -202,8 +202,9 @@ class FlightBuilder:
                 group.units[i].set_player()         # single player: the one "Player" slot
 
     def _payload(self, f: Flight, group) -> None:
-        if not f.loadout:                       # ATO was planned before payloads were known
-            f.loadout = loadouts.pick(f.aircraft, f.task)
+        # choose again at build time: payload files or the selection rules may have changed
+        # since the ATO was planned
+        f.loadout = loadouts.pick(f.aircraft, f.task) or f.loadout
         pyl = loadouts.pylons(f.aircraft, f.loadout)
         if not pyl:
             if self.seats.get(f.id):
@@ -211,6 +212,7 @@ class FlightBuilder:
                                      "re-arm on the ramp.")
             return
         for u in group.units:
+            u.pylons.clear()                    # pydcs pre-fills a default loadout: start clean
             for p in pyl:
                 try:
                     u.load_pylon(p)
@@ -261,7 +263,21 @@ class FlightBuilder:
         else:
             p.tasks.append(orbit)
 
+    def _tanker_beacon(self, f: Flight, group) -> None:
+        """Air-to-air TACAN for a tanker, on the channel the briefing lists."""
+        entry = next((t for t in self.ato.support.get(f.coalition, {}).get("tankers", [])
+                      if t.get("flight_id") == f.id), None)
+        chan, band = navaids.tanker_channel((entry or {}).get("tacan"))
+        if chan is None:
+            return
+        ident = "".join(c for c in f.callsign.upper() if c.isalpha())[:3] or "TKR"
+        group.points[0].tasks.append(task.ActivateBeaconCommand(chan, band, ident, unit_id=group.units[0].id,
+                                                                aa=True))
+        self.man[group.name]["tacan"] = f"{chan}{band} {ident}"
+
     def _tasks(self, pkg: Package, f: Flight, group) -> None:
+        if f.task == "TANKER":
+            self._tanker_beacon(f, group)
         tgt = terrain.to_point(self.m.terrain, pkg.target.lat, pkg.target.lon)
         marks = {getattr(p, "sortie_action", ""): p for p in group.points}
         boat = self._carrier_of(pkg)

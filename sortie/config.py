@@ -122,6 +122,20 @@ def server_output_dir(settings: Settings) -> Optional[Path]:
     return None
 
 
+def dcs_log_candidates(settings: Settings) -> List[Path]:
+    """dcs.log of the client and of the dedicated server: when MissionScripting.lua is not
+    desanitised there, the mission writes its events into the log instead of events.jsonl."""
+    out: List[Path] = []
+    sg = resolved_saved_games(settings)
+    if sg:
+        out.append(sg / "Logs" / "dcs.log")
+    if settings.server_saved_games:
+        out.append(Path(settings.server_saved_games) / "Logs" / "dcs.log")
+    else:
+        out += [p / "Logs" / "dcs.log" for p in paths.server_saved_games_candidates(sg.parent if sg else None)]
+    return [p for i, p in enumerate(out) if p not in out[:i]]
+
+
 def event_file_candidates(settings: Settings) -> List[Path]:
     """Every place the mission may have written events.jsonl, most likely first.
 

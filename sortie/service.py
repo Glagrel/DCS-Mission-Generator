@@ -79,9 +79,23 @@ class Service:
                                                              "flight": res.get("flight_id")})
         from .mission import clock
         slot_list = (st.sortie.summary.get("slots") if st.sortie else None) or []
+        nav = self._home_nav(st)
         return briefing.build(st, st.ato, st.ato.support.get("player_reason", ""),
                               t0=clock.mission_t0(st.ato, self.d, self.settings.player_start == "hot"),
-                              units=self.settings.units, slots=slot_list)
+                              units=self.settings.units, slots=slot_list, nav=nav)
+
+    def _home_nav(self, st: State) -> Dict[str, Any]:
+        from . import navaids, terrain
+        _, flt = st.ato.find_flight(st.ato.player_flight_id or "") if st.ato else (None, None)
+        if flt is None:
+            return {}
+        base = st.airbases[st.squadrons[flt.squadron_id].airbase_id]
+        try:
+            tobj = terrain.new_terrain(st.meta.terrain) if base.kind != "carrier" else None
+            return navaids.home_nav(st, base, config.resolved_install(self.settings), tobj)
+        except Exception as exc:                      # nav data is a nicety, never a blocker
+            log.warning("home nav data unavailable: %s", exc)
+            return {}
 
     @staticmethod
     def _replannable(st: State) -> bool:
@@ -179,13 +193,23 @@ class Service:
         self.poll_live(cid)
         sortie_id = st.sortie.summary.get("sortie_id")
         events = watcher.latest_run(self.store.events(cid, st.meta.turn))
+        if not events and sortie_id:
+            # no event file (host not desanitised?): look for this sortie in the DCS logs
+            for logf in config.dcs_log_candidates(self.settings):
+                found = [e for e in watcher.parse_dcs_log(logf)
+                         if str(e.get("id", "")).startswith(sortie_id + "-")]
+                if found:
+                    self.store.add_events(cid, st.meta.turn, found)
+                    log.info("read %d events from %s", len(found), logf)
+            events = watcher.latest_run(self.store.events(cid, st.meta.turn))
         flown: List[str] = []
         if events and sortie_id:
             ingest.ingest(st, st.ato, st.sortie, events, self.d)
             flown = list(st.sortie.flights)
         elif not allow_empty:
-            raise ServiceError("no mission events found for this sortie. Fly the mission first (and check "
-                               "that MissionScripting.lua is desanitised), or use 'skip sortie'.")
+            raise ServiceError("no mission events found for this sortie in the event file or in dcs.log "
+                               "(client or server). Make sure the mission you flew is the one generated "
+                               "last, or use 'skip sortie'.")
         else:
             st.sortie.state = "skipped"
         return self._finish_turn(cid, st, flown)

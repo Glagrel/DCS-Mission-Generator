@@ -86,3 +86,30 @@ def test_human_flights_and_support_are_never_despawned(tmp_path):
     env.run("P2.x = 900000; E1.air = true; MOCK.advance(50); E1.air = false; P2.air = false; MOCK.advance(600)")
     assert env.eval("MOCK.groups['S|flt|B3-04-1|1'].exists") is True
     assert env.eval("MOCK.groups['S|flt|R3-02-1|1'].exists") is True
+
+
+def test_limited_munitions_stocks_catalog_and_name_variants(tmp_path):
+    """Experimental limited weapons: everything DCS lists gets stock, including fuel tanks, and
+    ammo type names without a category prefix are tried with the usual prefixes."""
+    setup = SETUP + """
+    Warehouse = { getResourceMap = function() return {
+      ['weapons.droptanks.FPU_8A'] = { 1, 3, 43, 12 }, ['weapons.missiles.AIM_9X'] = { 4, 4, 7, 136 },
+      nested = { ['weapons.containers.AN_ASQ_228'] = true } } end }
+    P1.ammo = { AIM_9X = 2 }
+    MOCK.airbases['Al Dhafra AFB'].wh.weapon = {}
+    """
+    env = LuaEnv(tmp_path, scripts.config_lua(CFG), setup=setup)
+    wh = "MOCK.airbases['Al Dhafra AFB'].wh.weapon"
+    assert env.eval(wh + "['weapons.droptanks.FPU_8A']") == 40
+    assert env.eval(wh + "['weapons.containers.AN_ASQ_228']") == 40
+    assert env.eval(wh + "['weapons.missiles.AIM_9X']") == 40
+    dbg = [e for e in env.events() if e["ev"] == "warehouse_debug"][0]
+    assert dbg["resource_map"] == "table" and dbg["items"] == 3 and env.errors() == []
+    assert env.eval("#SORTIE.warehouse.variants('AIM_9X')") == 9
+    assert env.eval("#SORTIE.warehouse.variants('weapons.missiles.AIM_120C')") == 1
+
+
+def test_resource_map_unavailable_is_reported_not_fatal(tmp_path):
+    env = LuaEnv(tmp_path, scripts.config_lua(CFG), setup=SETUP)          # no Warehouse global at all
+    dbg = [e for e in env.events() if e["ev"] == "warehouse_debug"][0]
+    assert dbg["resource_map"] == "unavailable" and dbg["items"] == 0 and env.errors() == []

@@ -127,3 +127,20 @@ Entries are numbered; **FLAG** marks things that need in-sim verification or lat
     to the lead from the JOIN point on).
 34. **Hot start** (`player_start: hot`) applies to all human seats; the mission then opens
     `mission.hot_startup_minutes` (3) before take-off instead of 10.
+35. **Loadout selection** (after DCS Liberation's "Liberation <task>" convention): a payload named
+    `SORTIE <TASK>` wins; otherwise payloads are scored (`loadouts.score`) instead of taking the
+    first tagged one. Units' default pylons are cleared before a payload is applied.
+36. **Limited weapons default OFF** (`logistics.limit_munitions`). Evidence from the first flown
+    mission (server dcs.log): with limited munitions and no weapon rows in the .miz the warehouse
+    is empty; `getInventory()` lists nothing; aircraft are spawned without any store that has no
+    stock (the Hornet lost its AIM-9X and centreline tank; HARM/AMRAAM survived only because the
+    script had stocked those names); `Unit.getAmmo()` type names are not always warehouse names
+    ("AIM_9X"). Liberation uses unlimited warehouses. Experimental mode now also stocks everything
+    from `Warehouse.getResourceMap()` (shape unknown, probed and reported in a `warehouse_debug`
+    event) and tries category prefixes for bare names. **FLAG**
+37. **Fuel in warehouses is confirmed working**: `InitFuel` is tonnes (1500 -> 1,500,000 kg read
+    back) and AI refuelling reduced stock at Al Dhafra.
+38. **Navaids:** carrier TACAN 71X+, ICLS 1+, Link 4 336+ MHz, ACLS; tanker TACAN Y band via
+    `ActivateBeaconCommand`. Airfield TACAN/VOR/ILS/tower data is parsed from
+    `<DCS>\Mods\terrains\<terrain>\beacons.lua` (pydcs only has beacon ids).
+39. **Debrief reads dcs.log** (client and server) when no event file exists for the sortie.

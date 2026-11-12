@@ -21,7 +21,7 @@ def gname(kind: str, entity_id: str, n: int = 1) -> str:
 
 def parse_name(name: str):
     """(kind, entity id, n) or None for names SORTIE did not create."""
-    parts = (name or "").split(SEP)
+    parts = str(name or "").split(SEP)
     if len(parts) < 4 or parts[0] != "S":
         return None
     try:

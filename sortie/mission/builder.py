@@ -15,7 +15,7 @@ from dcs.coalition import Coalition
 from dcs.weather import Wind
 from pydantic import BaseModel, Field
 
-from .. import config, terrain
+from .. import config, navaids, terrain
 from ..atc import luacfg
 from ..models_ato import Ato
 from ..state import State
@@ -137,7 +137,10 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
             if moose_on:
                 m.find_group(entry["group"]).late_activation = True
         slot_list = slots.summary(st, ato, seats, man)
-        brief = briefing.build(st, ato, reason, t0=t0, units=settings.units, slots=slot_list)
+        _, pf = ato.find_flight(ato.player_flight_id)
+        home = st.airbases[st.squadrons[pf.squadron_id].airbase_id]
+        nav = navaids.home_nav(st, home, config.resolved_install(settings), m.terrain)
+        brief = briefing.build(st, ato, reason, t0=t0, units=settings.units, slots=slot_list, nav=nav)
         text = briefing.text(st, brief)
         kneeboard.attach(m, st, ato, brief, slot_list, t0, settings.units, warnings)
         m.set_sortie_text(f"SORTIE cycle {st.meta.turn}: {brief['mission']} - {brief['target']['name']}")

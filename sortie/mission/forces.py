@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 from dcs import statics, task
 from dcs.point import PointAction
 
-from .. import geo, models as M, terrain, units
+from .. import geo, models as M, navaids, terrain, units
 from ..state import State
 from .budget import Selection, gname
 
@@ -144,7 +144,17 @@ def add_naval(m, st: State, sel: Selection, man: Manifest) -> Dict[str, Any]:
             sg.add_unit(u)
         if nxt:
             sg.add_waypoint(terrain.to_point(m.terrain, nxt.lat, nxt.lon), 30 if n.role == "carrier" else 20)
+        nav = navaids.carrier_plan(st).get(nid)
+        if nav:
+            # switch the boat's navaids on: TACAN, ICLS, Link 4 and ACLS (as DCS Liberation does)
+            uid = sg.units[0].id
+            p0 = sg.points[0]
+            p0.tasks.append(task.ActivateBeaconCommand(nav["tacan_channel"], nav["tacan_band"], nav["ident"],
+                                                       unit_id=uid, aa=False))
+            p0.tasks.append(task.ActivateICLSCommand(nav["icls"], unit_id=uid))
+            p0.tasks.append(task.ActivateLink4Command(nav["link4"], unit_id=uid))
+            p0.tasks.append(task.ActivateACLSCommand(unit_id=uid))
         out[nid] = sg
         man.add(name, "naval_group", n.id, len(sg.units), represents=len(n.units), lat=n.lat, lon=n.lon,
-                carrier_unit=sg.units[0].name if n.role == "carrier" else None)
+                carrier_unit=sg.units[0].name if n.role == "carrier" else None, nav=nav)
     return out

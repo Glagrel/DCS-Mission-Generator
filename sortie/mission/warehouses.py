@@ -32,7 +32,7 @@ def apply_to_mission(m, st: State, logistics: Dict[str, Any]) -> None:
 
 def _fill(wh, base: M.Airbase, logistics: Dict[str, Any]) -> None:
     wh.unlimited_fuel = not logistics.get("limit_fuel", True)
-    wh.unlimited_munitions = not logistics.get("limit_munitions", True)
+    wh.unlimited_munitions = not logistics.get("limit_munitions", False)
     wh.unlimited_aircrafts = not logistics.get("limit_aircraft", False)
     wh.jet_init = round(base.fuel.jet, 1)
     wh.gasoline_init = round(base.fuel.avgas, 1)
@@ -70,7 +70,7 @@ def lua_table(st: State, logistics: Dict[str, Any], carrier_units: Dict[str, str
             "weapons": {k: int(v) for k, v in b.munitions.items()},
             "default_stock": int(round(default_stock * b.munition_level)),
             "aircraft": aircraft,
-            "limit_munitions": bool(logistics.get("limit_munitions", True)),
+            "limit_munitions": bool(logistics.get("limit_munitions", False)),
             "limit_aircraft": bool(logistics.get("limit_aircraft", False)),
         }
     return out

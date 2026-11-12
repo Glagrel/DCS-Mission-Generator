@@ -57,8 +57,29 @@ def flight_card(st: State, ato: Ato, flt: Flight, t0: float, units: str) -> Dict
             "objective": OBJECTIVES.get(flt.task, "Complete the tasking.")}
 
 
+def nav_text(nav: Dict[str, Any]) -> List[str]:
+    """Lines describing a base's navaids."""
+    if not nav:
+        return []
+    out = []
+    if nav.get("tacan"):
+        out.append(f"TACAN {nav['tacan']}")
+    if nav.get("icls"):
+        out.append(f"ICLS channel {nav['icls']}")
+    if nav.get("link4"):
+        out.append(f"Link 4 / ACLS {nav['link4']}.000")
+    if nav.get("vor"):
+        out.append(f"VOR {nav['vor']}")
+    for i in nav.get("ils", []):
+        out.append(f"ILS RWY {i['runway']} {i['freq']:.2f} {i['ident']}")
+    atc = nav.get("atc") or {}
+    if atc.get("uhf"):
+        out.append(f"Tower {atc['uhf']:.3f} / {atc.get('vhf', 0):.3f}")
+    return out
+
+
 def build(st: State, ato: Ato, reason: str, t0: float = 0.0, units: str = "imperial",
-          slots: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+          slots: Optional[List[Dict[str, Any]]] = None, nav: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Everything the GUI/briefing needs about the player's sortie."""
     pkg, flt = ato.find_flight(ato.player_flight_id or "")
     if flt is None:
@@ -90,6 +111,7 @@ def build(st: State, ato: Ato, reason: str, t0: float = 0.0, units: str = "imper
         "sead": [f.callsign for f in pkg.flights if f.task == "SEAD" and f.id != flt.id],
         "weather": w, "weather_text": _weather(w, units), "slots": slots or [],
         "pre_mission": ato.support.get("pre_mission", []),
+        "nav": nav or {}, "nav_lines": nav_text(nav or {}),
         "join": next(({"time": w["time"], "lat": w["lat"], "lon": w["lon"]} for w in card["waypoints"]
                       if w["name"] == "JOIN"), None),
         "base_status": {"fuel_jet_t": round(base.fuel.jet, 1), "fuel_avgas_t": round(base.fuel.avgas, 1),
@@ -174,6 +196,8 @@ def text(st: State, b: Dict[str, Any]) -> str:
         L.append(f"AWACS: {a['callsign']} {a['aircraft']} {_freq(a['freq'])}")
     if b.get("gci"):
         L.append(f"GCI: {_freq(b['gci']['freq'])}")
+    if b.get("nav_lines"):
+        L.append(f"HOME {b['nav'].get('name', '')}: " + "; ".join(b["nav_lines"]))
     if b["weather_text"]:
         L.append("WEATHER: " + b["weather_text"])
     bs = b["base_status"]

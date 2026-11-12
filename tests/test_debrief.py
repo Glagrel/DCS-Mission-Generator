@@ -255,3 +255,23 @@ def test_reassign_to_reinforce(gulf):
     gulf.squadrons["71fs"].pilots = 5
     rec = reassign.consider(gulf, d)
     assert rec and rec["to"] == "71st FS" and "short of pilots" in rec["reason"]
+
+
+def test_analyze_tolerates_real_dcs_oddities():
+    """From the first real mission log: scenery objects have numeric names, refs can be partial."""
+    me = _ref("S|flt|B1-01-1|1 Pilot #1", 2, "Rook")
+    ev = [
+        {"ev": "mission_start", "t": 0, "id": "1"},
+        {"ev": "takeoff", "t": 10, "i": me},
+        {"ev": "hit", "t": 20, "i": me, "tg": {"n": 73565184, "ty": "building", "cat": 5}},
+        {"ev": "kill", "t": 21, "i": me, "tg": {"n": 73565184, "cat": 5}},
+        {"ev": "dead", "t": 22, "i": {"n": 73565184}},
+        {"ev": "hit", "t": 23, "i": {"c": 1}, "tg": me},
+        {"ev": "kill", "t": 24, "i": None, "tg": None},
+        {"ev": "shot", "t": 25},
+        {"ev": "land", "t": 100, "i": me},
+    ]
+    a = aar.analyze(ev, MAN, "S|flt|B1-01-1|1")
+    assert a["player"]["landed"] and a["player"]["kills_ground"] == 0 and a["flights"]["B1-01-1"]["lost"] == 0
+    from sortie.mission.budget import parse_name
+    assert parse_name(73565184) is None

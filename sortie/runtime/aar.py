@@ -14,7 +14,9 @@ SIDE = {1: "red", 2: "blue"}
 
 
 def _n(ref: Optional[Dict[str, Any]]) -> str:
-    return (ref or {}).get("n") or ""
+    # DCS gives map objects (buildings, scenery) numeric names: always work with strings
+    v = (ref or {}).get("n") if isinstance(ref, dict) else None
+    return str(v) if v not in (None, "") else ""
 
 
 def _label(ref: Optional[Dict[str, Any]]) -> str:

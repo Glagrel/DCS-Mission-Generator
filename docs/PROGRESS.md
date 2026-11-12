@@ -123,3 +123,11 @@ Not done yet:
 - JOIN waypoint for multi-flight packages; hot-start option; `Stop SORTIE.bat`, restart-on-start.
 - Verified on a copy of the user's campaign database: mission now contains E-3A, KC-135MPRS and
   the S-3B recovery tanker, airborne at mission start. 171 tests pass.
+
+## Third feedback round (first real DCS run)
+- Read the server's dcs.log from the user's flight: scripts load cleanly, events and ATC work.
+- Fixed stripped stores (weapons unlimited by default; experimental mode stocks the resource map),
+  smarter loadout scoring and `SORTIE <TASK>` user payloads, default pylons cleared.
+- Carrier TACAN/ICLS/Link 4/ACLS, tanker TACAN, home navaids on briefing and kneeboard
+  (`sortie/navaids.py`, data from the DCS install's beacons.lua).
+- ATC placeholder fix; debrief falls back to dcs.log on client and server. 182 tests pass.

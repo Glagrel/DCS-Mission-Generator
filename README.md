@@ -5,7 +5,7 @@ A Falcon BMS-style dynamic campaign for DCS World. A Python engine runs a persis
 You are a line pilot: **the ATO assigns your mission, you never pick it.**
 
 > **Status.** Everything that can run without DCS is implemented and covered by an automated
-> test suite (`pytest`, 171 tests). **Nothing has been flown in DCS yet.** The generated
+> test suite (`pytest`, 183 tests). **Nothing has been flown in DCS yet.** The generated
 > missions load back into pydcs and the Lua runs under a real Lua 5.1 interpreter against a
 > mocked DCS API, but in-sim behaviour is unverified. Work through
 > [docs/TEST_IN_DCS.md](docs/TEST_IN_DCS.md) and read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
@@ -171,6 +171,26 @@ AWACS, package, air defences, weather). Open the kneeboard in the cockpit (defau
 Settings → *Units*: imperial (ft, kt, nm) or metric (m, km/h, km) for the GUI briefing, the DCS
 briefing text and the kneeboard.
 
+### Loadouts
+
+Each flight gets the best-scoring DCS payload for its task: the right weapons first, then external
+fuel, self-defence heat-seekers, radar missiles and the pods the weapons need. To force your own,
+save a payload in the Mission Editor named **`SORTIE <TASK>`** (for example `SORTIE SEAD`,
+`SORTIE CAS`, `SORTIE CAP`) for that aircraft; it always wins.
+
+Weapons at airbases are **unlimited in DCS by default**. Limited weapon stock
+(`logistics.limit_munitions: true`) is experimental: in the first flown mission DCS removed every
+store without warehouse stock, including fuel tanks, pods and AIM-9X. Fuel is limited and read
+back as designed. The campaign still tracks munition levels and grounds squadrons that run dry.
+
+### Navaids
+
+Carriers transmit TACAN (71X, 72X, ...), ICLS (channel 1, 2, ...), Link 4 and ACLS; tankers
+transmit air-to-air TACAN on the briefed Y channel. Your home base's TACAN, VOR, ILS frequencies
+per runway and tower frequencies are on the briefing and the kneeboard (read from the DCS install).
+Airfield ILS and TACAN are part of the map and always on; DCS activates the ILS for the runway in
+use.
+
 ### Carrier operations
 
 When a carrier is in the mission the ATO adds a plane-guard helicopter (SH-60B, about 1 nm off the
@@ -223,6 +243,7 @@ No test needs DCS or touches your DCS folders; everything runs in temp directori
 
 | Symptom | Fix |
 |---|---|
+| Mission was hosted on a server that is not desanitised | Nothing to do: at debrief SORTIE reads the events from the client's or server's `dcs.log`. Only the live feed needs the desanitize step. |
 | "No event file yet" on Live Mission | Run `tools\install_desanitize.ps1` (again after a DCS update); check `python -m sortie doctor`. |
 | Debrief says no events found | Same as above, or the mission was not this cycle's file. Events that went to `dcs.log` can be imported: `python -m sortie import-log <campaign id> <path to dcs.log>` (the id is shown in the Campaigns list). |
 | Aircraft spawn with empty pylons | DCS install not found → set it in Settings. Loadouts come from DCS's own payload files. |

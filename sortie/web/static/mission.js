@@ -23,6 +23,7 @@
         <tr><td>SEAD support</td><td>${b.sead.length ? b.sead.map(esc).join(', ') : 'none'}</td></tr>
         <tr><td>Tanker</td><td>${b.tankers.length ? b.tankers.map((t) => `${esc(t.callsign)} ${esc(t.aircraft)} ${freq(t.freq)} TACAN ${esc(t.tacan || '-')} ${esc(t.alt || '')}${t.recovery ? ' (recovery tanker overhead the carrier)' : ''}`).join('<br>') : 'none'}</td></tr>
         <tr><td>AWACS / GCI</td><td>${b.awacs.length ? b.awacs.map((a) => `${esc(a.callsign)} ${esc(a.aircraft)} ${freq(a.freq)}`).join('<br>') : (b.gci ? 'GCI ' + freq(b.gci.freq) : 'none')}</td></tr>
+        ${(b.nav_lines || []).length ? `<tr><td>Home navaids</td><td>${b.nav_lines.map(esc).join('<br>')}</td></tr>` : ''}
         <tr><td>Home base stocks</td><td>munitions ${SORTIE.pct(b.base_status.munitions)}, runway ${SORTIE.pct(b.base_status.runway)}, fuel ${(b.base_status.fuel_jet_t + b.base_status.fuel_avgas_t).toFixed(0)} t</td></tr>
       </table>
       <h3>Package</h3><table><tr><th>Callsign</th><th>Aircraft</th><th>Task</th><th>Squadron</th><th>Freq</th></tr>
