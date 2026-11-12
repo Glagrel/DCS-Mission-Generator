@@ -1,7 +1,8 @@
 @echo off
 rem Double-click to start the SORTIE GUI. Your browser opens http://127.0.0.1:8765
-rem Keep this window open while you use SORTIE; close it (or press Ctrl+C) to stop.
-title SORTIE
+rem If SORTIE is already running, the old copy is stopped first, so this also works as "restart".
+rem To stop SORTIE: close this window, or double-click "Stop SORTIE.bat".
+title SORTIE - close this window to stop
 cd /d "%~dp0"
 
 if not exist ".venv\Scripts\python.exe" (
@@ -15,9 +16,15 @@ if not exist ".venv\Scripts\python.exe" (
     )
 )
 
+rem stop a copy that is already running (for example one started before an update)
+powershell -NoProfile -ExecutionPolicy Bypass -File "tools\stop.ps1" -Quiet
+
+echo SORTIE is running. Keep this window open while you use it.
+echo To stop: close this window, or double-click "Stop SORTIE.bat".
+echo.
 ".venv\Scripts\python.exe" -m sortie gui %*
 if errorlevel 1 (
     echo.
-    echo SORTIE stopped with an error. If the port is in use, another SORTIE window may already be running.
+    echo SORTIE stopped with an error. See the message above.
     pause
 )
