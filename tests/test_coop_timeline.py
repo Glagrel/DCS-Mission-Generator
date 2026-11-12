@@ -173,6 +173,11 @@ def test_carrier_has_plane_guard_and_recovery_tanker(theaters, tmp_path):
     ship = m.find_group(budget.gname("nav", "cvn73"))
     kinds = [type(t).__name__ for t in groups[tname].points[0].tasks]
     assert "RecoveryTanker" in kinds
+    # overhead the carrier at angels 6, never on the high refuelling-track altitude
+    assert all(p.alt < 2000 for p in groups[tname].points[:-1])
+    assert groups[tname].units[0].alt < 2000
+    rec = [t for t in ato.support["blue"]["tankers"] if t.get("recovery")]
+    assert rec and all(t["alt_m"] < 2000 for t in rec)
     sx, sy = ship.position.x, ship.position.y
     hx, hy = groups[name].units[0].position.x, groups[name].units[0].position.y
     assert 1000 < ((hx - sx) ** 2 + (hy - sy) ** 2) ** 0.5 < 3000       # ~1 nm off the starboard side

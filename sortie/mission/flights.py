@@ -15,6 +15,7 @@ from dcs.terrain.terrain import NoParkingSlotError
 from dcs.unit import Skill
 
 from .. import geo, navaids, terrain, units, weather
+from ..ato import route
 from ..models_ato import Ato, Flight, Package
 from ..state import State
 from . import clock, codes, loadouts, slots
@@ -23,7 +24,8 @@ from .forces import Manifest
 
 log = logging.getLogger("sortie.mission")
 SKILLS = {"Average": Skill.Average, "Good": Skill.Good, "High": Skill.High, "Excellent": Skill.Excellent}
-RECOVERY_TANKER_ALT_M, RECOVERY_TANKER_SPEED_MS = 1829.0, 141.0     # 6,000 ft, 274 kt (MOOSE defaults)
+RECOVERY_TANKER_ALT_M = route.RECOVERY_TANKER_ALT_M                  # 6,000 ft overhead the carrier
+RECOVERY_TANKER_SPEED_MS = route.RECOVERY_TANKER_SPEED_KMH / 3.6     # 274 kt
 PLANE_GUARD_ALT_M, PLANE_GUARD_OFFSET_M = 90.0, 1852.0              # 300 ft, 1 nm to starboard
 
 

@@ -13,6 +13,9 @@ CAP_STATION_S = 3600.0
 ALT_M = {"CAP": 7500, "INTERCEPT": 7000, "ESCORT": 7000, "SWEEP": 7500, "SEAD": 6500, "DEAD": 6000,
          "STRIKE": 6000, "CAS": 3500, "INTERDICTION": 4500, "ANTISHIP": 5000, "RECON": 8000,
          "TANKER": 6700, "AWACS": 9000, "TRANSPORT": 5000, "SAR": 90}
+# carrier recovery tanker: low overhead the ship in the CASE I stack (angels 6), not on a
+# high-altitude refuelling track. 6,000 ft / 274 kt are also MOOSE RECOVERYTANKER's defaults.
+RECOVERY_TANKER_ALT_M, RECOVERY_TANKER_SPEED_KMH = 1829.0, 507.0
 SPEED = {"fighter": 850, "attacker": 750, "bomber": 780, "support": 720, "helo": 200, "ww2": 420}
 
 
@@ -48,13 +51,16 @@ def _threat(st: State, side: str, path: List[geo.Pt], ignore: str = "") -> float
 def build_route(st: State, side: str, home: M.Airbase, target: Target, aircraft: str, task: str,
                 tot_s: float) -> List[Waypoint]:
     alt, speed = profile(aircraft, task, st.meta.era_kind)
+    recovery = task == "TANKER" and target.kind == "airbase"     # only carriers get a tanker over a base
+    if recovery:
+        alt, speed = RECOVERY_TANKER_ALT_M, RECOVERY_TANKER_SPEED_KMH
     h, t = (home.lat, home.lon), (target.lat, target.lon)
     dist = geo.dist_km(h, t)
     br = geo.bearing(h, t)
     wps: List[Waypoint] = [Waypoint(name="DEP", lat=h[0], lon=h[1], alt_m=0, speed_kmh=0, action="takeoff")]
     if task in ORBIT_TASKS:
         # racetrack across the axis home->station so the orbit faces the threat
-        leg = 25.0 if task in ("CAP", "INTERCEPT") else (4.0 if task == "SAR" else 40.0)
+        leg = 25.0 if task in ("CAP", "INTERCEPT") else (4.0 if task == "SAR" else 18.0 if recovery else 40.0)
         p1, p2 = geo.destination(t, br + 90, leg / 2), geo.destination(t, br - 90, leg / 2)
         wps += [Waypoint(name="STN-A", lat=p1[0], lon=p1[1], alt_m=alt, speed_kmh=speed, action="orbit"),
                 Waypoint(name="STN-B", lat=p2[0], lon=p2[1], alt_m=alt, speed_kmh=speed, action="fly")]
