@@ -144,3 +144,9 @@ Entries are numbered; **FLAG** marks things that need in-sim verification or lat
     `ActivateBeaconCommand`. Airfield TACAN/VOR/ILS/tower data is parsed from
     `<DCS>\Mods\terrains\<terrain>\beacons.lua` (pydcs only has beacon ids).
 39. **Debrief reads dcs.log** (client and server) when no event file exists for the sortie.
+40. **Desanitize from the GUI** (user request). `sortie/sanitize.py` runs the same
+    `tools/install_desanitize.ps1`, only when the button is pressed, only for installs SORTIE
+    detected itself (settings/registry install, plus the install each Saved Games profile's
+    dcs.log says it was started with, which is how the dedicated server's install is found).
+    If the write is refused it is retried elevated through the normal UAC prompt. The elevated
+    branch cannot be covered by automated tests. **FLAG**

@@ -131,3 +131,8 @@ Not done yet:
 - Carrier TACAN/ICLS/Link 4/ACLS, tanker TACAN, home navaids on briefing and kneeboard
   (`sortie/navaids.py`, data from the DCS install's beacons.lua).
 - ATC placeholder fix; debrief falls back to dcs.log on client and server. 182 tests pass.
+
+## Desanitize button
+- `sortie/sanitize.py`, `GET/POST /api/desanitize`, Settings panel with Desanitize / Re-sanitize
+  per install, pop-up after generating while an install is still sanitised. Tested against fake
+  installs and in a browser; the UAC-elevated path is untested. 186 tests pass.

@@ -71,6 +71,7 @@
       SORTIE.lastBuild = { cid: SORTIE.cid, turn: r.briefing.turn, res: r };
       SORTIE.notice('Mission written to ' + r.path, 'good');
       await SORTIE.show('ato');
+      if ((r.sanitized || []).length) SORTIE.sanitizePopup(r.sanitized);
     } catch (e) { SORTIE.notice('Mission generation FAILED: ' + e.message, 'err'); }
   };
 

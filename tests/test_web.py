@@ -173,3 +173,69 @@ def test_restart_needed_when_code_changes(client, monkeypatch):
     real = webapp.code_stamp()
     monkeypatch.setattr(webapp, "code_stamp", lambda: real + 60)
     assert client.get("/api/status").json()["restart_needed"] is True
+
+
+# ---- desanitize button ------------------------------------------------------------------------------
+SANITIZED = """do
+\tsanitizeModule('os')
+\tsanitizeModule('io')
+\tsanitizeModule('lfs')
+\t_G['require'] = nil
+end
+"""
+
+
+def _fake_install(root, text=SANITIZED):
+    (root / "bin").mkdir(parents=True)
+    (root / "bin" / "DCS.exe").write_text("")
+    (root / "Scripts").mkdir()
+    (root / "Scripts" / "MissionScripting.lua").write_text(text)
+    return root
+
+
+def test_sanitize_status_parsing(tmp_path):
+    from sortie import sanitize
+    inst = _fake_install(tmp_path / "A")
+    assert sanitize.status(inst)["state"] == "sanitized" and sanitize.status(inst)["blocked"] == ["os", "io", "lfs"]
+    (inst / "Scripts" / "MissionScripting.lua").write_text(
+        "do\n\t-- SORTIE desanitize: sanitizeModule('os')\n\t--sanitizeModule('io')\n\t-- sanitizeModule('lfs')\nend\n")
+    assert sanitize.status(inst)["state"] == "desanitized"
+    (inst / "Scripts" / "MissionScripting.lua").write_text("do\n\tsanitizeModule('os')\n\t--sanitizeModule('io')\n\t--sanitizeModule('lfs')\nend\n")
+    assert sanitize.status(inst)["state"] == "desanitized"          # os alone does not block the event file
+    assert sanitize.status(tmp_path / "nowhere")["state"] == "missing"
+    log = tmp_path / "dcs.log"
+    log.write_text('2026 INFO APP (Main): Command line: "E:\\Program Files\\DCS World\\bin/DCS.exe"  --server -w DCS.server1\n')
+    assert str(sanitize.install_from_log(log)) == "E:\\Program Files\\DCS World"
+    assert sanitize.install_from_log(tmp_path / "missing.log") is None
+
+
+def test_desanitize_and_restore_through_the_api(client):
+    import shutil
+    if not (shutil.which("powershell") or shutil.which("pwsh")):
+        pytest.skip("PowerShell not available")
+    inst = _fake_install(client.tmp / "FakeDCS")
+    client.put("/api/settings", json={"dcs_install": str(inst)})
+    rows = client.get("/api/desanitize").json()
+    assert len(rows) == 1 and rows[0]["state"] == "sanitized" and rows[0]["uses"] == ["game"]
+    cid = _new(client).json()["id"]
+    gen = client.post(f"/api/campaigns/{cid}/mission").json()
+    assert [i["path"] for i in gen["sanitized"]] == [str(inst)]      # this is what triggers the pop-up
+    r = client.post("/api/desanitize", json={"path": str(inst), "action": "desanitize"})
+    assert r.status_code == 200 and r.json()["state"] == "desanitized" and r.json()["backup"] is True
+    text = (inst / "Scripts" / "MissionScripting.lua").read_text()
+    assert "-- SORTIE desanitize: sanitizeModule('io')" in text and "_G['require'] = nil" in text
+    assert client.get("/api/desanitize").json()[0]["state"] == "desanitized"
+    assert client.post(f"/api/campaigns/{cid}/mission").json()["sanitized"] == []    # no pop-up any more
+    r = client.post("/api/desanitize", json={"path": str(inst), "action": "restore"})
+    assert r.status_code == 200 and r.json()["state"] == "sanitized"
+    assert (inst / "Scripts" / "MissionScripting.lua").read_text().replace("\r\n", "\n") == SANITIZED
+
+
+def test_desanitize_api_only_touches_detected_installs(client):
+    other = _fake_install(client.tmp / "Other")
+    r = client.post("/api/desanitize", json={"path": str(other), "action": "desanitize"})
+    assert r.status_code == 400 and "not a detected DCS install" in r.json()["detail"]
+    assert (other / "Scripts" / "MissionScripting.lua").read_text() == SANITIZED
+    inst = _fake_install(client.tmp / "Mine")
+    client.put("/api/settings", json={"dcs_install": str(inst)})
+    assert client.post("/api/desanitize", json={"path": str(inst), "action": "format"}).status_code == 400

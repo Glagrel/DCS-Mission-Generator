@@ -132,10 +132,61 @@ SORTIE.wizard = function (status) {
   };
 };
 
+// ---- Desanitize ------------------------------------------------------------------------------
+SORTIE.modal = function (html) {
+  SORTIE.closeModal();
+  const back = document.createElement('div');
+  back.className = 'modal-back'; back.id = 'modal-back';
+  back.innerHTML = `<div class="modal">${html}</div>`;
+  back.onclick = (e) => { if (e.target === back) SORTIE.closeModal(); };
+  document.body.appendChild(back);
+  return back;
+};
+SORTIE.closeModal = function () { const m = document.getElementById('modal-back'); if (m) m.remove(); };
+
+SORTIE.sanitizeRows = function (list) {
+  if (!list.length) return '<p class="dim">No DCS install found. Set the DCS install folder above.</p>';
+  return '<table><tr><th>DCS install</th><th>Used by</th><th>Mission scripts</th><th></th></tr>' + list.map((i, n) => `<tr>
+    <td class="path">${esc(i.path)}</td><td>${i.uses.map(esc).join('<br>')}</td>
+    <td>${i.state === 'desanitized' ? '<span class="ok">can write files (desanitized)</span>' : i.state === 'sanitized' ? '<span class="warn">blocked (sanitized)</span>' : '<span class="red">MissionScripting.lua not found</span>'}</td>
+    <td>${i.state === 'sanitized' ? `<button class="primary san-btn" data-n="${n}" data-action="desanitize">Desanitize</button>` : ''}
+        ${i.state === 'desanitized' ? `<button class="san-btn" data-n="${n}" data-action="restore">Re-sanitize</button>` : ''}</td></tr>`).join('') + '</table>';
+};
+
+SORTIE.bindSanitize = function (root, list, after) {
+  root.querySelectorAll('.san-btn').forEach((b) => {
+    b.onclick = async () => {
+      const inst = list[parseInt(b.dataset.n, 10)];
+      b.disabled = true; b.textContent = 'Working... (answer the Windows prompt if one appears)';
+      try {
+        const r = await SORTIE.api('POST', '/api/desanitize', { path: inst.path, action: b.dataset.action });
+        SORTIE.notice((b.dataset.action === 'desanitize' ? 'Desanitized: ' : 'Restored the original file: ') + r.path +
+          (b.dataset.action === 'desanitize' ? '. DCS updates and repairs undo this; press the button again afterwards.' : ''), 'good');
+      } catch (e) { SORTIE.notice(e.message, 'err'); }
+      if (after) after();
+    };
+  });
+};
+
+SORTIE.sanitizePopup = function (list) {
+  const back = SORTIE.modal(`<h2>Live mission feed is blocked</h2>
+    <p>The mission was generated, but DCS is still set to stop mission scripts from writing files on:</p>
+    ${SORTIE.sanitizeRows(list)}
+    <p class="dim">Without this the live feed stays empty. The debrief still works: SORTIE reads the results from dcs.log afterwards.
+    Desanitizing comments out three lines in <span class="path">Scripts\\MissionScripting.lua</span> (a backup is kept) so missions can write files; only fly missions you trust. Windows may ask for administrator permission. DCS updates undo it.</p>
+    <div class="row"><button id="san-later">Not now</button></div>`);
+  back.querySelector('#san-later').onclick = () => SORTIE.closeModal();
+  SORTIE.bindSanitize(back, list, async () => {
+    const fresh = (await SORTIE.api('GET', '/api/desanitize')).filter((i) => i.state === 'sanitized');
+    if (fresh.length) SORTIE.sanitizePopup(fresh); else SORTIE.closeModal();
+  });
+};
+
 // ---- Settings --------------------------------------------------------------------------------
 SORTIE.pages.settings = async function () {
-  const [s, status, mods] = await Promise.all([
-    SORTIE.api('GET', '/api/settings'), SORTIE.api('GET', '/api/status'), SORTIE.api('GET', '/api/modules')]);
+  const [s, status, mods, san] = await Promise.all([
+    SORTIE.api('GET', '/api/settings'), SORTIE.api('GET', '/api/status'), SORTIE.api('GET', '/api/modules'),
+    SORTIE.api('GET', '/api/desanitize')]);
   const prof = status.profiles;
   $('#tab-settings').innerHTML = `
     <div class="cols2"><div>
@@ -144,6 +195,9 @@ SORTIE.pages.settings = async function () {
         <label>DCS install folder (blank = auto-detect)</label><input type="text" id="st-inst" value="${esc(s.dcs_install || '')}" placeholder="${esc(status.dcs_install || 'not found')}">
         <label>Mission output folder (blank = &lt;Saved Games&gt;\\Missions\\SORTIE)</label><input type="text" id="st-out" value="${esc(s.output_dir || '')}" placeholder="${esc(status.output_dir)}">
         <p class="dim">Detected: Saved Games <span class="path">${esc(status.saved_games || '-')}</span><br>Install <span class="path">${esc(status.dcs_install || '-')}</span><br>Event file <span class="path">${esc(status.events_file)}</span></p></div>
+      <div class="panel" id="san-panel"><h2>Mission script file access (desanitize)</h2>
+        <p class="dim">The live mission feed needs DCS to let mission scripts write files. This changes <span class="path">Scripts\\MissionScripting.lua</span> in the DCS install (a backup is kept; "Re-sanitize" restores it). Needed on the PC that hosts the mission. DCS updates undo it. Only fly missions you trust while it is on.</p>
+        ${SORTIE.sanitizeRows(san)}</div>
       <div class="panel"><h2>Performance</h2>
         <p>Installed RAM: <b>${status.ram_gb} GB</b> &rarr; automatic profile <b>${esc(status.profile_auto)}</b></p>
         <label>Profile</label><select id="st-profile">${['auto', 'light', 'standard', 'heavy'].map((x) => `<option ${x === s.profile ? 'selected' : ''}>${x}</option>`).join('')}</select>
@@ -179,6 +233,7 @@ SORTIE.pages.settings = async function () {
       <div class="checks" style="margin-top:8px">${mods.map((m) => `<label><input type="checkbox" class="st-mod" value="${esc(m.id)}" ${m.owned ? 'checked' : ''}> ${esc(m.id)} <span class="dim">${m.year}</span></label>`).join('')}</div>
     </div></div>
     <p><button class="primary" id="st-save">Save settings</button></p>`;
+  SORTIE.bindSanitize($('#san-panel'), san, () => SORTIE.pages.settings());
   const boxes = () => Array.from(document.querySelectorAll('.st-mod'));
   $('#st-coopall').onchange = (e) => { $('#st-coopmods').style.display = e.target.checked ? 'none' : ''; };
   document.querySelectorAll('.st-srvpick').forEach((a) => { a.onclick = (e) => { e.preventDefault(); $('#st-srv').value = a.textContent; $('#st-srvon').checked = true; }; });

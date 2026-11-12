@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .. import config, measure, paths, terrain, theater, units
+from .. import config, measure, paths, sanitize, terrain, theater, units
 from ..campaign import CampaignError, CareerOptions, owned
 from ..db import Store
 from ..mission import scripts
@@ -34,6 +34,11 @@ def code_stamp() -> float:
             except OSError:
                 pass
     return newest
+
+
+class SanitizeRequest(BaseModel):
+    path: str
+    action: str                      # desanitize | restore
 
 
 class SettingsPatch(BaseModel):
@@ -145,6 +150,24 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
         loadouts.configure_from_settings(new)
         return new.model_dump()
 
+    @app.get("/api/desanitize")
+    def desanitize_status() -> List[Dict[str, Any]]:
+        """Each DCS install in use and whether mission scripts may write files there."""
+        return sanitize.installs(svc.settings)
+
+    @app.post("/api/desanitize")
+    def desanitize_apply(req: SanitizeRequest) -> Dict[str, Any]:
+        """Runs tools/install_desanitize.ps1 for one detected install - only ever on this click."""
+        if req.action not in ("desanitize", "restore"):
+            raise HTTPException(400, "action must be desanitize or restore")
+        known = {i["path"].rstrip("\\/").lower() for i in sanitize.installs(svc.settings)}
+        if req.path.rstrip("\\/").lower() not in known:
+            raise HTTPException(400, "not a detected DCS install")
+        res = sanitize.apply(Path(req.path), undo=req.action == "restore")
+        if not res["ok"]:
+            raise HTTPException(400, "Could not change MissionScripting.lua. " + res["output"][-600:])
+        return res
+
     @app.get("/api/modules")
     def modules() -> List[Dict[str, Any]]:
         mine = set(owned(svc.settings))
@@ -209,7 +232,8 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
         res = guard(svc.generate_mission, cid)
         return {"ok": True, "path": res.path, "filename": res.filename, "warnings": res.warnings,
                 "stats": res.stats, "scripts": res.scripts, "briefing": res.briefing,
-                "extra_paths": res.extra_paths, "slots": res.slots}
+                "extra_paths": res.extra_paths, "slots": res.slots,
+                "sanitized": sanitize.needs_attention(svc.settings)}
 
     @app.get("/api/campaigns/{cid}/live")
     def live(cid: str):

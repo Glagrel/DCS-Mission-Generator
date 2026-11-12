@@ -5,7 +5,7 @@ A Falcon BMS-style dynamic campaign for DCS World. A Python engine runs a persis
 You are a line pilot: **the ATO assigns your mission, you never pick it.**
 
 > **Status.** Everything that can run without DCS is implemented and covered by an automated
-> test suite (`pytest`, 183 tests). **Nothing has been flown in DCS yet.** The generated
+> test suite (`pytest`, 186 tests). **Nothing has been flown in DCS yet.** The generated
 > missions load back into pydcs and the Lua runs under a real Lua 5.1 interpreter against a
 > mocked DCS API, but in-sim behaviour is unverified. Work through
 > [docs/TEST_IN_DCS.md](docs/TEST_IN_DCS.md) and read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
@@ -71,8 +71,15 @@ URL, date and commit of the copy in use.
 ## Let the mission write its event file (desanitize)
 
 DCS blocks file access from mission scripts. SORTIE needs it to write
-`<Saved Games>\Missions\SORTIE\runtime\events.jsonl`. Run once, **in an elevated PowerShell if
-DCS is under Program Files**:
+`<Saved Games>\Missions\SORTIE\runtime\events.jsonl` for the live feed.
+
+**Easiest: Settings -> "Mission script file access" -> Desanitize.** It lists every DCS install in
+use (game and dedicated server), shows whether scripts are blocked, and has a *Desanitize* and a
+*Re-sanitize* (restore) button. Windows asks for administrator permission when DCS is under
+Program Files. If you generate a mission while an install is still blocked, a pop-up offers the
+same button. The buttons run the script below.
+
+By hand, **in an elevated PowerShell if DCS is under Program Files**:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\install_desanitize.ps1
