@@ -14,21 +14,23 @@
       <table>
         <tr><td>Flight</td><td><b>${esc(f.callsign)}</b> &middot; ${f.count} &times; ${esc(f.aircraft)} &middot; ${esc(f.squadron)} from ${esc(f.base)}</td></tr>
         <tr><td>Package</td><td>${esc(b.package.id)} (${esc(b.package.mission)})</td></tr>
-        <tr><td>Time on target</td><td><b>${esc(b.tot)}</b>${b.target.bullseye ? ' &middot; target bullseye ' + esc(b.target.bullseye) : ''}</td></tr>
+        <tr><td>Mission starts</td><td>${esc(b.mission_start)} <span class="dim">(the mission opens at your start-up time; earlier events of the cycle are already resolved)</span></td></tr>
+        <tr><td>Take-off / time on target</td><td><b>${esc(b.takeoff)}</b> / <b>${esc(b.tot)}</b>${b.target.bullseye ? ' &middot; target bullseye ' + esc(b.target.bullseye) : ''}</td></tr>
         <tr><td>Radio</td><td>${freq(f.freq)}</td></tr>
         <tr><td>Loadout</td><td>${f.stores.length ? f.stores.map(esc).join(', ') : '<span class="dim">' + (f.loadout ? esc(f.loadout) : 'no stock loadout known - arm on the ramp') + '</span>'}</td></tr>
         <tr><td>Escort</td><td>${b.escort.length ? b.escort.map(esc).join(', ') : 'none'}</td></tr>
         <tr><td>SEAD support</td><td>${b.sead.length ? b.sead.map(esc).join(', ') : 'none'}</td></tr>
-        <tr><td>Tanker</td><td>${b.tankers.length ? b.tankers.map((t) => `${esc(t.callsign)} ${esc(t.aircraft)} ${freq(t.freq)} TACAN ${esc(t.tacan || '-')}`).join('<br>') : 'none'}</td></tr>
+        <tr><td>Tanker</td><td>${b.tankers.length ? b.tankers.map((t) => `${esc(t.callsign)} ${esc(t.aircraft)} ${freq(t.freq)} TACAN ${esc(t.tacan || '-')} ${esc(t.alt || '')}${t.recovery ? ' (recovery tanker overhead the carrier)' : ''}`).join('<br>') : 'none'}</td></tr>
         <tr><td>AWACS / GCI</td><td>${b.awacs.length ? b.awacs.map((a) => `${esc(a.callsign)} ${esc(a.aircraft)} ${freq(a.freq)}`).join('<br>') : (b.gci ? 'GCI ' + freq(b.gci.freq) : 'none')}</td></tr>
         <tr><td>Home base stocks</td><td>munitions ${SORTIE.pct(b.base_status.munitions)}, runway ${SORTIE.pct(b.base_status.runway)}, fuel ${(b.base_status.fuel_jet_t + b.base_status.fuel_avgas_t).toFixed(0)} t</td></tr>
       </table>
       <h3>Package</h3><table><tr><th>Callsign</th><th>Aircraft</th><th>Task</th><th>Squadron</th><th>Freq</th></tr>
       ${b.package.flights.map((r) => `<tr class="${r.player ? 'me' : ''}"><td>${esc(r.callsign)}</td><td>${r.count} &times; ${esc(r.aircraft)}</td><td>${r.task}</td><td>${esc(r.squadron)}</td><td>${freq(r.freq)}</td></tr>`).join('')}</table>
-      <h3>Route</h3><table><tr><th>#</th><th>Waypoint</th><th>Time</th><th>Altitude</th><th>Speed</th><th>Position</th></tr>
-      ${b.waypoints.map((w, i) => `<tr><td>${i}</td><td>${esc(w.name)}</td><td>${esc(w.time)}</td><td>${w.alt_m.toFixed(0)} m</td><td>${w.speed_kmh.toFixed(0)} km/h</td><td class="dim">${w.lat.toFixed(3)}, ${w.lon.toFixed(3)}</td></tr>`).join('')}</table>
+      <h3>Route</h3><table><tr><th>#</th><th>Waypoint</th><th>Time</th><th>Altitude</th><th>Speed</th><th>Hdg / leg &middot; position</th></tr>
+      ${b.waypoints.map((w, i) => `<tr><td>${i}</td><td>${esc(w.name)}</td><td>${esc(w.time)}</td><td>${esc(w.alt)}</td><td>${esc(w.speed)}</td><td class="dim">${esc(w.hdg)} / ${esc(w.leg)} &middot; ${w.lat.toFixed(3)}, ${w.lon.toFixed(3)}</td></tr>`).join('')}</table>
+      ${(b.pre_mission || []).length ? '<h3>Earlier this cycle</h3>' + b.pre_mission.map((l) => `<div>&bull; ${esc(l)}</div>`).join('') : ''}
       <h3>Threats</h3>
-      ${th.sams.length ? `<table><tr><th>System</th><th>Site</th><th>Range</th><th>From route</th></tr>${th.sams.slice(0, 10).map((s) => `<tr><td>${esc(s.type)}</td><td>${esc(s.name)}</td><td>${s.range_km} km</td><td class="${s.inside ? 'red' : ''}">${s.dist_km} km${s.inside ? ' - route inside ring' : ''}</td></tr>`).join('')}</table>` : '<p class="dim">No known air defences near the route.</p>'}
+      ${th.sams.length ? `<table><tr><th>System</th><th>Site</th><th>Range</th><th>From route</th></tr>${th.sams.slice(0, 10).map((s) => `<tr><td>${esc(s.type)}</td><td>${esc(s.name)}</td><td>${esc(s.range)}</td><td class="${s.inside ? 'red' : ''}">${esc(s.dist)}${s.inside ? ' - route inside ring' : ''}</td></tr>`).join('')}</table>` : '<p class="dim">No known air defences near the route.</p>'}
       ${th.air.length ? '<p><b>Expected air opposition:</b> ' + th.air.slice(0, 6).map((a) => `${a.count} &times; ${esc(a.aircraft)} (${a.task}) near ${esc(a.near)}`).join('; ') + '</p>' : '<p class="dim">No enemy fighters expected near the route.</p>'}
       <p class="row"><button class="primary" id="btn-gen2">Generate Next Mission</button><button id="btn-skip">Skip this sortie (resolve abstractly)</button></p>
       <div id="gen-result"></div></div>`;
@@ -51,7 +53,10 @@
   function showBuild(r) {
     const box = $('#gen-result'); if (!box) return;
     box.innerHTML = `<h3>Mission generated</h3><p class="ok"><b>${esc(r.filename)}</b></p><p class="path">${esc(r.path)}</p>
-      <p>${r.stats.aircraft} aircraft in ${r.stats.flights} flights, ${r.stats.ground_groups} ground groups, ${r.stats.static_groups} structures, ${r.stats.naval_groups} naval groups &middot; profile ${esc(r.stats.profile)} &middot; ${r.stats.coop_slots > 1 ? r.stats.coop_slots + ' client slots (co-op)' : 'single player'} &middot; ${r.stats.size_kb} kB</p>
+      ${(r.extra_paths || []).map((p) => `<p class="path">Server copy: ${esc(p)}</p>`).join('')}
+      <p>Mission clock starts at <b>${esc(r.stats.start_time)}</b> &middot; ${r.stats.kneeboard_pages} kneeboard pages &middot; at most ${r.stats.peak_airborne} aircraft airborne at once</p>
+      ${(r.slots || []).length ? '<table><tr><th>Slot</th><th>Aircraft</th><th>Task</th><th>Seats</th><th>Base</th><th>Freq</th></tr>' + r.slots.map((s) => `<tr class="${s.career ? 'me' : ''}"><td>${esc(s.callsign)}${s.career ? ' (you)' : ''}</td><td>${esc(s.aircraft)}</td><td>${s.task}</td><td>${s.seats} (aircraft ${s.positions.join(', ')})</td><td>${esc(s.base)}</td><td>${freq(s.freq)}</td></tr>`).join('') + '</table>' : ''}
+      <p>${r.stats.aircraft} aircraft in ${r.stats.flights} flights, ${r.stats.ground_groups} ground groups, ${r.stats.static_groups} structures, ${r.stats.naval_groups} naval groups &middot; profile ${esc(r.stats.profile)} &middot; ${r.stats.multiplayer ? r.stats.human_seats + ' client slots (co-op)' : 'single player'} &middot; ${r.stats.size_kb} kB</p>
       ${r.warnings.length ? '<p class="warn">' + r.warnings.map(esc).join('<br>') + '</p>' : ''}
       <p class="dim">In DCS: Mission &rarr; My Missions &rarr; SORTIE, fly it, then come back to Live Mission / Debrief.</p>`;
   }
@@ -130,6 +135,7 @@
           ${p.career_promoted ? `<tr><td>Promotion</td><td class="ok">Promoted to ${esc(p.career_promoted)}</td></tr>` : ''}
           ${(p.career_awards || []).length ? `<tr><td>Awards</td><td class="ok">${p.career_awards.map(esc).join(', ')}</td></tr>` : ''}
           <tr><td>Aircraft lost in your mission</td><td>${SORTIE.side('blue')} ${(d.summary.aircraft_lost || {}).blue || 0} &middot; ${SORTIE.side('red')} ${(d.summary.aircraft_lost || {}).red || 0}</td></tr></table>` : ''}
+        ${((d.summary || {}).humans || []).length > 1 ? '<h3>Pilots</h3><table><tr><th>Pilot</th><th>Flight</th><th>Aircraft</th><th>Kills A/G/N/S</th><th>Time</th><th>Outcome</th></tr>' + d.summary.humans.map((h) => `<tr><td>${esc(h.name || 'unknown')}</td><td>${esc(h.flight)}</td><td>${esc(h.aircraft || '')}</td><td>${h.kills_air} / ${h.kills_ground} / ${h.kills_naval} / ${h.kills_structure}</td><td>${(h.flight_time_s / 3600).toFixed(2)} h</td><td>${h.dead ? '<span class="red">killed</span>' : h.ejected ? '<span class="red">ejected</span>' : h.crashed ? '<span class="red">crashed</span>' : h.landed ? '<span class="ok">landed</span>' : h.took_off ? 'did not land' : 'never took off'}</td></tr>`).join('') + '</table>' : ''}
         ${d.transfer ? `<p class="warn"><b>New orders:</b> transferred to ${esc(d.transfer.to)} (${esc(d.transfer.aircraft)}). ${esc(d.transfer.reason)}</p>` : ''}
         <p>Next: cycle ${d.next.turn}, ${esc(d.next.date.replace('T', ' ').slice(0, 16))}${d.next.status !== 'active' ? ' &mdash; <b>CAMPAIGN ' + d.next.status.toUpperCase() + '</b>' : ''}
         <button onclick="SORTIE.show('ato')">See next assignment</button></p></div>

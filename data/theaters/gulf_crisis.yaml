@@ -52,6 +52,8 @@ squadrons:
   - {id: vf103, name: VF-103, coalition: blue, country: USA, airbase: cvn73, aircraft: F-14B, tasks: [CAP, ESCORT, SWEEP, STRIKE], airframes: 12, callsign: Victory}
   - {id: vaw115, name: VAW-115, coalition: blue, country: USA, airbase: cvn73, aircraft: E-2C, tasks: [AWACS], airframes: 3, callsign: Wizard}
   - {id: vs21, name: VS-21, coalition: blue, country: USA, airbase: cvn73, aircraft: S-3B Tanker, tasks: [TANKER], airframes: 4, callsign: Arco}
+  - {id: hsl51, name: HSL-51, coalition: blue, country: USA, airbase: cvn73, aircraft: SH-60B, tasks: [SAR], airframes: 4, callsign: Warlord}
+  - {id: hsc23, name: HSC-23, coalition: blue, country: USA, airbase: lha1, aircraft: SH-60B, tasks: [SAR], airframes: 3, callsign: Wildcard}
   - {id: vma311, name: VMA-311, coalition: blue, country: USA, airbase: lha1, aircraft: AV8BNA, tasks: [CAS, STRIKE, INTERDICTION], airframes: 8, callsign: Tomcat}
   - {id: uae71, name: 71 Sqn UAEAF, coalition: blue, country: United Arab Emirates, airbase: minhad, aircraft: M-2000C, tasks: [CAP, ESCORT, SWEEP], airframes: 14, callsign: Shaheen}
   - {id: raf31, name: No. 31 Sqn RAF, coalition: blue, country: UK, airbase: minhad, aircraft: Tornado GR4, tasks: [STRIKE, DEAD, INTERDICTION, RECON], airframes: 10, callsign: Goldstar}

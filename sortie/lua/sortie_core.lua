@@ -19,26 +19,60 @@ function SORTIE.safe(name, fn, ...)
   return ok, err
 end
 
-function SORTIE.open()
-  if not (io and lfs and lfs.writedir) then
-    SORTIE.log('io/lfs not available (MissionScripting.lua is sanitised). Events go to dcs.log only.')
-    return false
+-- Candidate folders for the event file, most specific first (the approach DCS Retribution
+-- uses for its state file): folders SORTIE passed in as absolute paths (need only `io`),
+-- then this DCS instance's own Saved Games folder (needs `lfs`), then %TEMP% (needs `os`).
+function SORTIE.event_dirs()
+  local dirs = {}
+  for _, d in ipairs(SORTIE.cfg.event_dirs or {}) do dirs[#dirs + 1] = d end
+  if lfs and lfs.writedir then
+    dirs[#dirs + 1] = lfs.writedir() .. (SORTIE.cfg.runtime_subdir or 'Missions\\SORTIE\\runtime\\')
   end
-  local dir = lfs.writedir() .. (SORTIE.cfg.runtime_subdir or 'Missions\\SORTIE\\runtime\\')
-  -- create each level; lfs.mkdir fails harmlessly when the folder exists
+  if os and os.getenv then
+    local tmp = os.getenv('TEMP') or os.getenv('TMP')
+    if tmp then dirs[#dirs + 1] = tmp .. '\\SORTIE\\' end
+  end
+  return dirs
+end
+
+local function make_dirs(dir)
+  if not (lfs and lfs.mkdir) then return end
   local path = ''
   for part in string.gmatch(dir, '[^\\/]+[\\/]?') do
     path = path .. part
-    if not string.find(part, ':') then pcall(lfs.mkdir, path) end
+    if not string.find(part, ':') then pcall(lfs.mkdir, path) end   -- fails harmlessly when it exists
   end
-  local f, err = io.open(dir .. (SORTIE.cfg.events_file or 'events.jsonl'), 'w')
-  if not f then
-    SORTIE.log('cannot open event file: ' .. tostring(err))
+end
+
+function SORTIE.open()
+  if not io then
+    SORTIE.log('io is not available (MissionScripting.lua is sanitised). Events go to dcs.log only.')
     return false
   end
-  SORTIE.file, SORTIE.mode = f, 'file'
-  SORTIE.log('writing events to ' .. dir .. (SORTIE.cfg.events_file or 'events.jsonl'))
-  return true
+  local name = SORTIE.cfg.events_file or 'events.jsonl'
+  for _, dir in ipairs(SORTIE.event_dirs()) do
+    make_dirs(dir)
+    local ok, f = pcall(io.open, dir .. name, 'w')
+    if ok and f then
+      SORTIE.file, SORTIE.mode, SORTIE.path = f, 'file', dir .. name
+      SORTIE.log('writing events to ' .. SORTIE.path)
+      return true
+    end
+  end
+  SORTIE.log('no writable folder for the event file. Events go to dcs.log only.')
+  return false
+end
+
+-- Tell the humans once whether the campaign link works, like Retribution's write-failure notice.
+function SORTIE.announce()
+  local text
+  if SORTIE.mode == 'file' then
+    text = 'SORTIE: campaign link active.'
+  else
+    text = 'SORTIE: cannot write the event file. Run tools\\install_desanitize.ps1 on the PC hosting '
+      .. 'this mission. Results can still be imported from dcs.log afterwards.'
+  end
+  pcall(trigger.action.outText, text, SORTIE.mode == 'file' and 8 or 25)
 end
 
 -- Write one event as one JSON line and flush immediately.
@@ -113,16 +147,20 @@ function SORTIE.players()
   return out
 end
 
--- Text to the player's group (falls back to the whole coalition).
+-- Text to every group that has a human seat (falls back to the whole coalition).
 function SORTIE.message(text, seconds)
   local shown = false
-  pcall(function()
-    local g = Group.getByName(SORTIE.cfg.player_group or '')
-    if g and g:isExist() then
-      trigger.action.outTextForGroup(g:getID(), text, seconds or 12)
-      shown = true
-    end
-  end)
+  local groups = SORTIE.cfg.client_groups
+  if not groups or #groups == 0 then groups = { SORTIE.cfg.player_group or '' } end
+  for _, name in ipairs(groups) do
+    pcall(function()
+      local g = Group.getByName(name)
+      if g and g:isExist() then
+        trigger.action.outTextForGroup(g:getID(), text, seconds or 12)
+        shown = true
+      end
+    end)
+  end
   if not shown then
     pcall(trigger.action.outTextForCoalition, SORTIE.cfg.player_side or 2, text, seconds or 12)
   end
@@ -139,5 +177,6 @@ end
 SORTIE.safe('open', SORTIE.open)
 SORTIE.emit('mission_start', {
   campaign = SORTIE.cfg.campaign, turn = SORTIE.cfg.turn, sortie = SORTIE.cfg.sortie,
-  run = SORTIE.run, mode = SORTIE.mode, version = SORTIE.cfg.version,
+  run = SORTIE.run, mode = SORTIE.mode, version = SORTIE.cfg.version, path = SORTIE.path,
 })
+timer.scheduleFunction(function() SORTIE.safe('announce', SORTIE.announce) end, nil, timer.getTime() + 10)

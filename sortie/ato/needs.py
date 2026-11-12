@@ -4,7 +4,7 @@ Every Need carries a `reason` string so the player can see why the ATO tasked th
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -20,6 +20,7 @@ class Need(BaseModel):
     score: float
     reason: str
     size: int = 4
+    base_id: Optional[str] = None      # only squadrons at this base may fly it (carrier support)
 
 
 def air_strength(st: State, side: str) -> float:
@@ -161,6 +162,16 @@ def score_needs(st: State, side: str, d: Dict[str, Any]) -> List[Need]:
         if st.has_cap(side, "TANKER"):
             needs.append(Need(mission="TANKER", size=1, score=85, reason="Air refuelling track for the cycle",
                               target=_front_target(st, f, side, 95, " tanker track")))
+    # carrier flight operations: plane-guard helicopter alongside and a recovery tanker overhead
+    for b in st.side("airbases", side):
+        if b.kind != "carrier":
+            continue
+        t = Target(kind="airbase", id=b.id, name=b.name, lat=b.lat, lon=b.lon)
+        needs.append(Need(mission="SAR", size=1, score=88, base_id=b.id, target=t,
+                          reason=f"Plane guard for flight operations on {b.name}"))
+        if st.has_cap(side, "TANKER"):
+            needs.append(Need(mission="TANKER", size=1, score=86, base_id=b.id, target=t,
+                              reason=f"Recovery tanker overhead {b.name}"))
     low = [b for b in st.side("airbases", side) if b.kind == "airfield" and b.munition_level < 0.5]
     if low:
         b = min(low, key=lambda x: x.munition_level)

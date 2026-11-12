@@ -29,6 +29,9 @@ repair:
 ground:
   front_step: 0.03                # max front movement per turn (fraction of axis)
   attrition: 0.04
+mission:
+  startup_minutes: 10             # mission clock starts this long before the player's take-off time
+  taxi_minutes: 5                 # AI on the ramp start up this long before their own take-off time
 coop:
   player_slots: 1                 # 1 = single player (slot is "Player"); >1 = Client slots
 atc:

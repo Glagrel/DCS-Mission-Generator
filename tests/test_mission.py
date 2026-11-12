@@ -44,8 +44,11 @@ def test_build_each_theater(theaters, tid, tmp_path):
     assert f'["sortie"] = "{res.sortie_id}"' in cfg and "S|flt|" in cfg
     m = dcs.Mission()
     m.load_file(res.path)
-    assert m.start_time.strftime("%Y-%m-%dT%H:%M") == st.meta.date[:16]
-    assert res.stats["aircraft"] <= config.profile_limits(res.stats["profile"])["max_air"]
+    from datetime import timedelta
+    start = st.now + timedelta(seconds=res.stats["t0_s"])
+    assert m.start_time.strftime("%Y-%m-%dT%H:%M") == start.strftime("%Y-%m-%dT%H:%M")
+    assert res.stats["peak_airborne"] <= config.profile_limits(res.stats["profile"])["max_air"]
+    assert res.stats["aircraft"] >= res.stats["peak_airborne"]
     assert set(st.meta.countries["blue"]) == set(m.coalition["blue"].countries)
     if tid == "forager_1944":
         assert any("MarianaIslandsWWII" in w for w in res.warnings)
@@ -90,7 +93,8 @@ def test_carrier_player_flight(theaters, tmp_path):
 def test_profiles_scale_the_mission(theaters, tmp_path):
     light = _build(theaters, "gulf_crisis", tmp_path / "l", profile="light")[2]
     heavy = _build(theaters, "gulf_crisis", tmp_path / "h", profile="heavy")[2]
-    assert light.stats["aircraft"] <= 24 < heavy.stats["aircraft"] <= 72
+    assert light.stats["peak_airborne"] <= 24 and heavy.stats["peak_airborne"] <= 72
+    assert light.stats["aircraft"] < heavy.stats["aircraft"]
     assert light.stats["ground_groups"] <= heavy.stats["ground_groups"]
     assert light.selection["bubble_km"] < heavy.selection["bubble_km"]
 

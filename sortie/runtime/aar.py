@@ -87,6 +87,15 @@ def analyze(events: List[Dict[str, Any]], manifest: Dict[str, Any], player_group
                               "kills_structure": 0, "landed": False, "ejected": False, "dead": False,
                               "crashed": False, "took_off": False, "flight_time_s": 0.0, "name": None,
                               "pos": None, "landed_at": None, "entered": False}
+    # every human seat (career pilot and co-op guests): unit name -> record
+    humans: Dict[str, Dict[str, Any]] = {}
+    for gname_, v in manifest.items():
+        if v.get("kind") == "flight":
+            for unit in v.get("clients") or []:
+                humans[unit] = {"unit": unit, "flight": v["id"], "aircraft": v.get("aircraft"), "name": None,
+                                "seen": False, "took_off": False, "landed": False, "ejected": False,
+                                "dead": False, "crashed": False, "flight_time_s": 0.0, "kills_air": 0,
+                                "kills_ground": 0, "kills_naval": 0, "kills_structure": 0, "_off": None}
     lost_units: Set[str] = set()
     ejected: Set[str] = set()
     dead_pilots: Set[str] = set()
@@ -111,6 +120,8 @@ def analyze(events: List[Dict[str, Any]], manifest: Dict[str, Any], player_group
             flights[parsed_i[1]][f"kills_{cls}"] += 1
         if _n(initiator) == lead:
             player[f"kills_{cls}"] += 1
+        if _n(initiator) in humans:
+            humans[_n(initiator)][f"kills_{cls}"] += 1
 
     for e in events:
         ev, i, tg = e.get("ev"), e.get("i"), e.get("tg")
@@ -149,6 +160,26 @@ def analyze(events: List[Dict[str, Any]], manifest: Dict[str, Any], player_group
                         entities[key]["lost"] += 1
                 if name in last_hit:             # no kill event seen: credit the last unit that hit it
                     credit(last_hit[name], name)
+        if name in humans:
+            h = humans[name]
+            h["seen"] = True
+            if (i or {}).get("p"):
+                h["name"] = i["p"]
+            t_ev = float(e.get("t", 0) or 0)
+            if ev == "takeoff":
+                h["took_off"], h["landed"] = True, False
+                h["_off"] = h["_off"] if h["_off"] is not None else t_ev
+            elif ev == "land":
+                h["landed"] = True
+                if h["_off"] is not None:
+                    h["flight_time_s"] += t_ev - h["_off"]
+                    h["_off"] = None
+            elif ev == "eject":
+                h["ejected"] = True
+            elif ev == "pilot_dead":
+                h["dead"] = True
+            elif ev == "crash":
+                h["crashed"], h["landed"] = True, False
         # --- the career pilot (lead seat of the player group) ---------------------------------
         if name == lead:
             if (i or {}).get("p"):
@@ -182,7 +213,16 @@ def analyze(events: List[Dict[str, Any]], manifest: Dict[str, Any], player_group
                 f["pilots_lost"] += 1
     if player["ejected"] or player["crashed"]:
         player["landed"] = False
+    for h in humans.values():
+        if h["_off"] is not None:
+            h["flight_time_s"] += max(0.0, t_last - h["_off"])
+        del h["_off"]
+        if h["ejected"] or h["crashed"]:
+            h["landed"] = False
+        if not h["seen"] and h["flight"] in flights:        # a Client seat nobody took never spawned
+            flights[h["flight"]]["absent"] = flights[h["flight"]].get("absent", 0) + 1
     return {"flights": flights, "entities": entities, "player": player, "warehouses": warehouses,
+            "humans": [h for h in humans.values() if h["seen"]],
             "captured": captured, "timeline": timeline, "duration_s": t_last,
             "ended": any(e.get("ev") == "mission_end" for e in events),
             "started": any(e.get("ev") == "mission_start" for e in events)}

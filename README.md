@@ -5,7 +5,7 @@ A Falcon BMS-style dynamic campaign for DCS World. A Python engine runs a persis
 You are a line pilot: **the ATO assigns your mission, you never pick it.**
 
 > **Status.** Everything that can run without DCS is implemented and covered by an automated
-> test suite (`pytest`, 135 tests). **Nothing has been flown in DCS yet.** The generated
+> test suite (`pytest`, 162 tests). **Nothing has been flown in DCS yet.** The generated
 > missions load back into pydcs and the Lua runs under a real Lua 5.1 interpreter against a
 > mocked DCS API, but in-sim behaviour is unverified. Work through
 > [docs/TEST_IN_DCS.md](docs/TEST_IN_DCS.md) and read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
@@ -118,14 +118,60 @@ Your browser opens <http://127.0.0.1:8765>.
 
 ### Co-op
 
-Settings → *Player slots* 2–4. Your flight then has that many **Client** slots (the rest of
-the flight is AI). Host the generated mission as a multiplayer server. The career follows the
-pilot in slot 1 of the flight. The host needs the desanitize step.
+Settings → *Co-op / multiplayer*:
+
+* **Seats in your own flight (1–4):** friends fly as your wingmen in the same aircraft type.
+* **Extra pilots in their own aircraft (0–12):** each gets a wingman seat in *another* friendly
+  flight of the mission (same package first, then other flights that depart during the mission),
+  in any aircraft from the co-op module list — so a friend with a different module flies that
+  module. The AI keeps the lead of those flights, so the tasking is flown even if nobody joins.
+  The ATO still decides what every flight does.
+* Every human seat is a **Client** slot, cold on the ramp or deck. The generated-mission panel and
+  the DCS briefing list the slots (callsign, aircraft, seat numbers, base, frequency).
+* Accounting is per aircraft: a guest's aircraft comes out of that squadron's airframes, fuel and
+  weapons like any other; losses and kills are credited to the flight and shown per pilot in the
+  debrief. A seat nobody takes never spawns and costs nothing. The career (hours, rank, awards)
+  follows the pilot in seat 1 of your flight.
+* The host needs the desanitize step. Multi-crew seats (WSO/RIO/CPG) work as DCS provides them.
+
+**Dedicated server:** tick *Also save each mission into the server's Missions\SORTIE folder* and
+set the server's Saved Games folder (detected profiles such as `DCS.server1` are offered). The
+mission is written to both places, and events are read from whichever instance runs the mission
+(client folder, server folder or `%TEMP%\SORTIE`).
+
+### Mission clock
+
+The mission does not start at the beginning of the 6-hour cycle. It starts ten minutes before
+your take-off time (`mission.startup_minutes`). Packages that are already home by then are fought
+out before the mission is built, so their results are in it and listed under "Earlier this cycle".
+Flights that took off before then are airborne where they would be; everything else is parked at
+its base (or on the deck) and starts up on schedule. Nothing spawns in mid-air during the mission
+and every flight flies home and lands. AWACS and tankers are on station for the whole cycle.
+Whatever happens after you land is resolved at debrief.
+
+### Kneeboard
+
+Every aircraft type with a human seat gets kneeboard pages inside the mission (flight card with
+route, times, headings, distances, coordinates, loadout; a support/threat page with tankers,
+AWACS, package, air defences, weather). Open the kneeboard in the cockpit (default `RShift+K`).
+
+### Units
+
+Settings → *Units*: imperial (ft, kt, nm) or metric (m, km/h, km) for the GUI briefing, the DCS
+briefing text and the kneeboard.
+
+### Carrier operations
+
+When a carrier is in the mission the ATO adds a plane-guard helicopter (SH-60B, about 1 nm off the
+starboard side at 300 ft; kept on station by MOOSE's RESCUEHELO when MOOSE is embedded) and a
+recovery tanker overhead (S-3B at 6,000 ft using DCS's Recovery Tanker task).
 
 ### Performance profiles
 
-Light / Standard / Heavy cap concurrent AI aircraft, ground groups, naval groups and the
-simulation bubble around your route; everything outside is resolved abstractly. Auto picks
+Light / Standard / Heavy cap how many aircraft are **airborne at the same time**, plus ground
+groups, naval groups and the simulation bubble around your route. Flights at different times do
+not count against each other, and your own package is never cut. Everything outside is resolved
+abstractly. Auto picks
 Light ≤ 20 GB RAM, Standard ≤ 48 GB, Heavy above. All numbers are starting guesses in
 `config\defaults.yaml` — tune them.
 

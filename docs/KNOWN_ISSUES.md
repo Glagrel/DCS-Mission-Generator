@@ -62,3 +62,19 @@ and tested against fixtures/mocks only; see TEST_IN_DCS.md for the checks.
 21. **Cold War template** uses Tornado GR4 for the RAF Tornado GR1 and F-4E for the Luftwaffe
     F-4F; the Gulf template uses the DCS country Iran for the fictional opponent.
 22. **Map tiles and Leaflet** load from the internet (OpenStreetMap, unpkg).
+
+## Added with the co-op / timeline rework
+
+23. **Co-op guest flights:** the AI lead of a guest's flight is not held for the human and may
+    take off first. Guests can only join flights that are still on the ground at mission start.
+24. **Plane guard under MOOSE** is respawned by RESCUEHELO under a new group name; if it is shot
+    down the squadron's airframe count is not reduced. Without MOOSE it does not follow the ship.
+25. **Shared stands:** when a ramp is full a later flight appears on a stand vacated earlier, or
+    lines up on the runway at take-off time. On very small airfields this can still fall back to
+    entering airborne over the base (a warning is shown).
+26. **AI departure timing** uses a fixed taxi allowance (`mission.taxi_minutes`); real taxi times
+    vary, so TOTs are approximate.
+27. **Kneeboard pages** are per aircraft type: two flights of the same type with human seats see
+    each other's flight cards (labelled by callsign).
+28. **Dedicated server on another PC:** copy the event file back or point *Server Saved Games*
+    at a share; the mission falls back to that server's own Saved Games folder.

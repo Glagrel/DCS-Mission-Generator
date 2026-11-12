@@ -126,14 +126,16 @@ def test_proximity_spawn(env):
 
 
 def test_despawn_is_flagged_not_a_loss(env):
-    env.run("MOCK.advance(500)")
-    assert env.eval("MOCK.groups['S|flt|R3-02-1|1'].exists") is True       # not past end time yet
-    env.run("MOCK.advance(500)")                                             # t=1000 > 600+300, 300 km away
+    env.run("MOCK.advance(2000)")
+    assert env.eval("MOCK.groups['S|flt|R3-02-1|1'].exists") is True       # airborne aircraft are never removed
+    env.run("E1.air = false; MOCK.advance(100)")
+    assert env.eval("MOCK.groups['S|flt|R3-02-1|1'].exists") is True       # landed, but not parked 3 min yet
+    env.run("MOCK.advance(200)")                                             # parked > 180 s and 300 km away
     assert env.eval("MOCK.groups['S|flt|R3-02-1|1'].exists") is False
     env.run("MOCK.fire{ id = world.event.S_EVENT_DEAD, initiator = E1 }")
     ev = env.events()
     de = [e for e in ev if e["ev"] == "despawn"][0]
-    assert de["units"] == ["S|flt|R3-02-1|1 Pilot #1"] and de["reason"] == "finished"
+    assert de["units"] == ["S|flt|R3-02-1|1 Pilot #1"] and de["reason"] == "landed"
     dead = [e for e in ev if e["ev"] == "dead"][0]
     assert dead["despawned"] is True
     assert env.eval("MOCK.groups['S|flt|B3-01-1|1'].exists") is True       # the player's group is never touched

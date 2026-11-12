@@ -9,7 +9,8 @@ lua51 = pytest.importorskip("lupa.lua51")
 ROOT = Path(__file__).resolve().parent.parent
 LUA = ROOT / "sortie" / "lua"
 MOCK = Path(__file__).resolve().parent / "lua_mock.lua"
-CORE = ["sortie_json.lua", "sortie_core.lua", "sortie_events.lua", "sortie_warehouse.lua", "sortie_spawn.lua"]
+CORE = ["sortie_json.lua", "sortie_core.lua", "sortie_events.lua", "sortie_warehouse.lua", "sortie_carrier.lua",
+        "sortie_spawn.lua"]
 
 
 class LuaEnv:

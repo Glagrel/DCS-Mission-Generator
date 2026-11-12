@@ -44,14 +44,18 @@ class Service:
             raise ServiceError(str(exc)) from exc
 
     def events_path(self) -> Path:
-        return config.resolved_runtime_dir(self.settings) / builder.EVENTS_FILE
+        """The preferred event file (others are watched too: see config.event_file_candidates)."""
+        return config.event_file_candidates(self.settings)[0]
 
-    def _tail(self, cid: str) -> watcher.EventTail:
-        path = self.events_path()
-        t = self._tails.get(cid)
-        if t is None or t.path != path:
-            t = self._tails[cid] = watcher.EventTail(path, self.store, f"events:{cid}")
-        return t
+    def _tail_list(self, cid: str) -> List[watcher.EventTail]:
+        """One tail per place the mission may write to (client, dedicated server, %TEMP%)."""
+        out = []
+        for i, path in enumerate(config.event_file_candidates(self.settings)):
+            key = f"{cid}|{path}"
+            if key not in self._tails:
+                self._tails[key] = watcher.EventTail(path, self.store, f"events:{cid}:{i}")
+            out.append(self._tails[key])
+        return out
 
     # -- campaign ----------------------------------------------------------------------------
     def new_campaign(self, opt: CareerOptions) -> str:
@@ -70,7 +74,10 @@ class Service:
             save_state(self.store, cid, st)
             self.store.log(cid, st.meta.turn, "assignment", {"reason": res["reason"],
                                                              "flight": res.get("flight_id")})
-        return briefing.build(st, st.ato, st.ato.support.get("player_reason", ""))
+        from .mission import clock
+        slot_list = (st.sortie.summary.get("slots") if st.sortie else None) or []
+        return briefing.build(st, st.ato, st.ato.support.get("player_reason", ""),
+                              t0=clock.mission_t0(st.ato, self.d), units=self.settings.units, slots=slot_list)
 
     def generate_mission(self, cid: str, out_dir: Optional[Path] = None,
                          with_moose: Optional[bool] = None) -> builder.BuildResult:
@@ -78,6 +85,7 @@ class Service:
         self.plan(cid, st)
         if st.pilot and st.pilot.status in ("kia", "pow", "mia"):
             raise ServiceError(f"career is over: pilot is {st.pilot.status.upper()}")
+        self._resolve_before_launch(st)
         try:
             res = builder.build_mission(st, st.ato, st.ato.support.get("player_reason", ""), self.settings,
                                         out_dir, with_moose)
@@ -87,25 +95,59 @@ class Service:
                                  miz_path=res.path,
                                  summary={"manifest": res.manifest, "sortie_id": res.sortie_id,
                                           "player_group": builder.budget.gname("flt", st.ato.player_flight_id),
-                                          "warnings": res.warnings, "stats": res.stats})
+                                          "warnings": res.warnings, "stats": res.stats, "slots": res.slots,
+                                          "extra_paths": res.extra_paths})
         save_state(self.store, cid, st)             # also stores callsigns DCS actually assigned
         self.store.clear_events(cid, st.meta.turn)
         self.store.log(cid, st.meta.turn, "mission", {"path": res.path, "stats": res.stats})
         return res
+
+    def _resolve_before_launch(self, st: State) -> None:
+        """The mission starts at the start-up time of the player flight. Packages that are already
+        home by then are fought out now, so their results (dead SAMs, losses, damage) are in the
+        mission that gets built."""
+        from .mission import clock
+        from .sim import airwar
+        ato = st.ato
+        if not ato or not ato.player_flight_id:
+            return
+        t0 = clock.mission_t0(ato, self.d)
+        rng = st.rng("airwar-pre")
+        lines = list(ato.support.get("pre_mission", []))
+        for pkg in sorted(ato.packages, key=lambda p: (p.tot_s, p.id)):
+            if pkg.id == ato.player_package_id or not pkg.flights:
+                continue
+            if any(f.status != "planned" or clock.phase(f, t0) != clock.DONE for f in pkg.flights):
+                continue
+            results = airwar.resolve_package(st, ato, pkg, self.d, rng, set())
+            if pkg.coalition == st.meta.player_side and results:
+                lost = sum(r.lost for r in results)
+                ok = max(r.success for r in results)
+                lines.append(f"{pkg.id} {pkg.mission} on {pkg.target.name}: "
+                             + ("successful" if ok >= 0.5 else "little effect")
+                             + (f", {lost} aircraft lost" if lost else ""))
+        ato.support["pre_mission"] = lines
 
     # -- live feed ---------------------------------------------------------------------------
     def poll_live(self, cid: str) -> Dict[str, Any]:
         """Read new lines of events.jsonl, store those of this turn's sortie, return feed lines."""
         st = self.state(cid)
         sortie_id = (st.sortie.summary.get("sortie_id") if st.sortie else None)
-        tail = self._tail(cid)
-        new = [e for e in tail.poll() if sortie_id and str(e.get("id", "")).startswith(sortie_id + "-")]
+        tails = self._tail_list(cid)
+        new, tail = [], tails[0]
+        for t in tails:
+            got = [e for e in t.poll() if sortie_id and str(e.get("id", "")).startswith(sortie_id + "-")]
+            if got:
+                new, tail = new + got, t
+        if not new:
+            tail = next((t for t in tails if t.path.is_file()), tails[0])
         if new:
             self.store.add_events(cid, st.meta.turn, new)
         feed = [x for x in (aar.timeline_entry(e) for e in new) if x]
         snap = next((e for e in reversed(new) if e.get("ev") == "snapshot"), None)
         return {"events": feed, "snapshot": snap, "count": len(self.store.events(cid, st.meta.turn)),
-                "malformed": tail.malformed, "file": str(tail.path), "exists": tail.path.is_file()}
+                "malformed": sum(t.malformed for t in tails), "file": str(tail.path),
+                "exists": tail.path.is_file(), "watching": [str(t.path) for t in tails]}
 
     def import_events(self, cid: str, path: Path) -> int:
         """Load an events.jsonl (or a dcs.log with SORTIE_EVT lines) for the current sortie."""

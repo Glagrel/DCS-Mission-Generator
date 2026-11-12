@@ -14,7 +14,7 @@ from .needs import Need, air_strength, score_needs
 from .radio import RadioPlan, callsign, clamp_to_aircraft, tacan_channel
 
 log = logging.getLogger("sortie.ato")
-MAX_PACKAGES_PER_SIDE = 14
+MAX_PACKAGES_PER_SIDE = 18
 DIMINISH = 7.0
 FIRST_TOT_S, TOT_STEP_S = 2400.0, 420.0
 STRIKE_LIKE = ("STRIKE", "DEAD", "INTERDICTION", "ANTISHIP", "CAS", "SEAD", "RECON")
@@ -29,13 +29,20 @@ class Pool:
             self.left[s.id] = readiness(st, s, d)[0]
             self.flights[s.id] = 0
 
-    def candidates(self, mission: str, target, size: int) -> List[M.Squadron]:
+    def candidates(self, mission: str, target, size: int, base_id: Optional[str] = None) -> List[M.Squadron]:
         out = []
         for sid, n in self.left.items():
             s = self.st.squadrons[sid]
             if n < min(size, 2 if size > 1 else 1) or mission not in s.tasks:
                 continue
+            if base_id and s.airbase_id != base_id:
+                continue
             base = self.st.airbases[s.airbase_id]
+            if mission == "TANKER" and not base_id and base.kind == "carrier" and any(
+                    "TANKER" in q.tasks and self.left.get(q.id, 0) > 0
+                    and self.st.airbases[q.airbase_id].kind != "carrier" for q in self.st.squadrons.values()
+                    if q.coalition == s.coalition):
+                continue                       # carrier tankers stay with the boat when land tankers exist
             dist = geo.dist_km((base.lat, base.lon), (target.lat, target.lon))
             if dist > units.combat_radius_km(s.aircraft):
                 continue
@@ -85,14 +92,14 @@ def plan_side(st: State, side: str, d: Dict[str, Any], turn: int) -> List[Packag
         # of the same type less attractive, so the ATO stays balanced
         need = max(remaining, key=lambda n: n.score - DIMINISH * per_mission.get(n.mission, 0))
         remaining.remove(need)
-        cands = pool.candidates(need.mission, need.target, need.size)
+        cands = pool.candidates(need.mission, need.target, need.size, need.base_id)
         if not cands:
             continue
         n_pk = len(packages) + 1
         pkg = Package(id=f"{side[0].upper()}{turn}-{n_pk:02d}", coalition=side, mission=need.mission,
                       target=need.target, score=round(need.score, 1), reason=need.reason,
                       tot_s=FIRST_TOT_S + (n_pk - 1) * TOT_STEP_S, freq=radio.next())
-        if need.mission in ("AWACS", "TANKER"):
+        if need.mission in ("AWACS", "TANKER", "SAR"):
             pkg.tot_s = 600.0                       # support is on station early
         lead = cands[0]
         pkg.flights.append(_flight(st, pkg, lead, pool.take(lead, need.size), need.mission, radio, seq))
@@ -122,6 +129,7 @@ def support_info(st: State, packages: List[Package]) -> Dict[str, Any]:
                          "alt_m": f.waypoints[1].alt_m if len(f.waypoints) > 1 else 0, "flight_id": f.id}
                 if f.task == "TANKER":
                     entry["tacan"] = tacan_channel(len(tankers))
+                    entry["recovery"] = p.target.kind == "airbase"      # overhead a carrier
                     tankers.append(entry)
                 elif f.task == "AWACS":
                     awacs.append(entry)

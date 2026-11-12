@@ -1,8 +1,8 @@
 -- SORTIE proximity manager.
 --  * Late-activated ground groups (cfg.late_groups) are activated when a player comes
 --    within cfg.spawn_m of them.
---  * AI flights that are finished (past their planned end time, or landed) and farther than
---    cfg.despawn_m from every player are removed. Their units are recorded in
+--  * AI flights that have landed and parked, and are farther than cfg.despawn_m from every
+--    player, are removed (never while airborne). Their units are recorded in
 --    SORTIE.despawned and a 'despawn' event is written BEFORE the group is destroyed, so the
 --    campaign never counts them as losses.
 SORTIE.spawn = { pending = {}, air = {}, landed = {} }
@@ -35,7 +35,8 @@ function S.init()
     if man[name] then S.pending[name] = man[name] end
   end
   for name, entry in pairs(man) do
-    if entry.kind == 'flight' and not entry.player then S.air[name] = entry end
+    local humans = entry.clients and #entry.clients > 0
+    if entry.kind == 'flight' and not entry.player and not humans and not entry.role then S.air[name] = entry end
   end
 end
 
@@ -90,11 +91,9 @@ function S.tick()
         end
         local d = nearest_player_m(u:getPoint(), players)
         local far = d and d > (SORTIE.cfg.despawn_m or 130000)
-        local finished = entry.end_s and now > entry.end_s + 300
+        -- only aircraft that have landed and parked are ever removed; nothing vanishes in the air
         local parked = S.landed[name] and now - S.landed[name] > 180
-        if far and (finished or parked) then
-          S.despawn(name, entry, parked and 'landed' or 'finished')
-        end
+        if far and parked then S.despawn(name, entry, 'landed') end
       end
     end
   end

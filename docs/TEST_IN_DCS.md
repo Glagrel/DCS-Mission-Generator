@@ -107,6 +107,28 @@ None of these has been run. Fill in **Actual** and **P/F** as you go. Unless sta
 | 7.11 | FLIGHTCONTROL tower | `atc.use_flightcontrol: true`, voice on | Taxi/take off | MOOSE tower handles your flight; no duplicate SORTIE tower texts | | |
 | 7.12 | CSAR notice | Gulf / ATC on | Eject | Controller acknowledges; `csar` event written | | |
 
+## 7b. Timeline, co-op guests, carrier support, kneeboard
+
+| # | Test | Theater / aircraft / setup | Steps | Expected | Actual | P/F |
+|---|---|---|---|---|---|---|
+| 9.1 | Mission clock | Gulf / A | Start mission | Clock reads the "Mission starts" time from the briefing, about 10 min before your take-off time | | |
+| 9.2 | Parked AI starts on time | Gulf / A | Watch a parked AI flight (F10/F2) | Cold and still until about 5 min before its take-off time, then starts, taxis, takes off | | |
+| 9.3 | Airborne at start | Gulf / A | F10 at mission start | AWACS, tanker and flights already en route are in the air from second zero; nothing appears in mid-air later | | |
+| 9.4 | Everyone lands | Gulf / A | Follow a returning flight | It lands and parks; only then is it removed (if far from players) | | |
+| 9.5 | Shared stand / runway start | a small base with several flights | Watch the ramp | Later flight appears on a vacated stand or on the runway at take-off time; no collisions | | |
+| 9.6 | AWACS/tanker stay on station | Gulf / A | Fly a long sortie | Both orbit for the whole mission, then go home | | |
+| 9.7 | Earlier this cycle | Gulf / late TOT | Read the briefing | Results of packages flown before your launch are listed and visible in the mission (e.g. damaged SAM) | | |
+| 9.8 | Guest slots | Gulf / extra pilots = 2, host | Slot list | Client slots in other flights, in the listed aircraft, cold on the ramp | | |
+| 9.9 | Guest accounting | as 9.8, guest flies, kills, loses the jet | Debrief | Pilots table shows the guest; that squadron lost an airframe; kills credited | | |
+| 9.10 | Unused guest seat | as 9.8, nobody takes one seat | Debrief | No loss, no fuel or weapons charged for that seat | | |
+| 9.11 | Messages to all humans | co-op with ATC on | Fly | Controller texts reach every human group | | |
+| 9.12 | Campaign link notice | Gulf / A | 10 s after start | "SORTIE: campaign link active" (or the desanitize hint) on screen | | |
+| 9.13 | Dedicated server | save to server on | Start the server with the copied mission | Mission loads; events appear in the GUI live feed | | |
+| 9.14 | Plane guard | carrier career | Look off the starboard side | SH-60B close aboard at low altitude, staying with the ship | | |
+| 9.15 | Recovery tanker | carrier career | Look overhead / comms | S-3B orbiting the carrier at about 6,000 ft, usable as tanker | | |
+| 9.16 | Kneeboard | any | Open the kneeboard in the cockpit | SORTIE flight card and support pages are present and readable | | |
+| 9.17 | Units | Settings → metric, regenerate | Briefing and kneeboard | Altitudes in m, speeds in km/h, distances in km | | |
+
 ## 8. Campaign continuity
 
 | # | Test | Theater / aircraft / setup | Steps | Expected | Actual | P/F |

@@ -83,3 +83,33 @@ Entries are numbered; **FLAG** marks things that need in-sim verification or lat
 23. **Limited aircraft in warehouses is off by default** (`logistics.limit_aircraft`): the
     .miz aircraft rows need `wsType` data pydcs lacks, and a wrong table could block the
     player's slot. Airframe attrition is enforced by the campaign instead (flight sizes).
+24. **Mission clock (fast-forward).** The .miz starts `mission.startup_minutes` (10) before the
+    player's take-off time instead of at the start of the cycle. Packages wholly finished by
+    then are resolved abstractly *before* the build (`Service._resolve_before_launch`), the rest
+    after debrief. Inspired by DCS Retribution's start-at-player-start-up option.
+25. **No mid-air spawns.** At mission start a flight is either already airborne (it took off
+    earlier; placed by interpolation along its route) or parked. Parked AI is `uncontrolled`
+    until a one-shot trigger pushes its Start command. If a ramp is full, a later flight takes
+    over the stands of one that left >5 min earlier (late-activated on the stand); failing that
+    it lines up on the runway at take-off time; only then does it enter airborne over its base,
+    with a warning. Aircraft are only removed after landing and parking.
+26. **The aircraft limit is concurrency**, not a total: `budget._peak` checks aircraft airborne
+    at the same time. The player's package is exempt.
+27. **Carrier support.** Doctrine used: plane-guard helicopter in the starboard delta about 1 nm
+    abeam at 300 ft (figures from US Army FM 1-564 ch. 5 on shipboard helicopter patterns);
+    recovery tanker overhead at 6,000 ft / 274 kt (MOOSE RECOVERYTANKER defaults; community
+    sources for the 6K stack altitude, not NATOPS). Tanker = DCS native `RecoveryTanker` task;
+    helicopter = MOOSE `RESCUEHELO:New(carrierunit, helogroupname)` when MOOSE is embedded
+    (it respawns the group under a new name, so its losses are not tracked), else a fixed
+    racetrack beside the ship's start position. New mission type `SAR`; SH-60B squadrons added
+    to the Gulf template. **FLAG** verify in DCS.
+28. **Co-op guests** sit in the *last* aircraft of other friendly flights (AI keeps the lead).
+    Their flights start cold on the ground and are not delayed, so the AI lead may leave before
+    a human is ready. Unused Client seats are detected from the absence of any event for the
+    unit and are not charged. **FLAG**
+29. **Event file location** now follows Retribution's pattern: absolute folders passed in by the
+    app (needs only `io`), then `lfs.writedir()`, then `%TEMP%`; the first writable one wins and
+    an on-screen notice says whether the campaign link works. Python watches all candidates.
+30. **Kneeboards** are PNGs rendered with Pillow and appended to the saved archive under
+    `KNEEBOARD/<aircraft type>/IMAGES/` (pydcs's own helper writes a doubled slash in the
+    archive path, so it is not used). **FLAG** verify they show in the cockpit.

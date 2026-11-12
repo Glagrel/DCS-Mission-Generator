@@ -26,6 +26,7 @@ TASK_MAP: Dict[str, List[str]] = {
     "TANKER": ["Refueling"],
     "AWACS": ["AWACS"],
     "TRANSPORT": ["Transport"],
+    "SAR": ["Transport"],            # plane guard / rescue helicopters
 }
 
 

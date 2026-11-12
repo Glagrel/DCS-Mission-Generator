@@ -133,3 +133,26 @@ def test_parallel_requests_do_not_collide(client):
         codes = list(ex.map(lambda u: client.get(u).status_code, urls))
     assert set(codes) == {200}
     assert len(client.svc.store.history(cid, "assignment")) == 1        # planned exactly once
+
+
+def test_coop_server_and_units_settings(client):
+    srv = client.tmp / "sg" / "DCS.server1"
+    r = client.put("/api/settings", json={"coop_slots": 2, "coop_extra_slots": 3, "coop_modules": ["A-10C_2"],
+                                          "server_saved_games": str(srv), "save_to_server": True,
+                                          "units": "metric"})
+    assert r.status_code == 200
+    s = client.get("/api/status").json()
+    assert s["units"]["system"] == "metric" and s["units"]["alt"] == "m"
+    assert s["server_output_dir"].endswith("SORTIE") and "DCS.server1" in s["server_output_dir"]
+    assert len(s["event_files"]) >= 2 and "DCS.server1" in s["event_files"][1]
+    assert client.put("/api/settings", json={"units": "furlongs"}).status_code == 400
+    assert client.put("/api/settings", json={"coop_extra_slots": 99}).status_code == 400
+    assert client.put("/api/settings", json={"coop_modules": ["E-3A"]}).status_code == 400
+    client.put("/api/settings", json={"coop_modules": None})
+    cid = _new(client).json()["id"]
+    b = client.get(f"/api/campaigns/{cid}/briefing").json()
+    assert b["units"] == "metric" and b["waypoints"][1]["alt"].endswith(" m") and b["mission_start"]
+    body = client.post(f"/api/campaigns/{cid}/mission").json()
+    assert body["extra_paths"] and (srv / "Missions" / "SORTIE" / body["filename"]).is_file()
+    assert sum(x["seats"] for x in body["slots"]) == 5 and body["stats"]["kneeboard_pages"] >= 2
+    assert client.put("/api/settings", json={"server_saved_games": ""}).json()["server_saved_games"] is None

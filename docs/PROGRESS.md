@@ -102,3 +102,16 @@ Not done yet:
   12-cycle abstract war. `python -m sortie doctor` verified on this machine (read-only).
 - Final: 135 tests pass. No file outside the project folder was written by the agent except
   temp directories. Nothing has been run in DCS.
+
+## Rework after first user feedback (co-op, timeline, carrier ops, kneeboard, server, units)
+- Researched DCS Retribution (state-file path fallbacks and write-failure notice in its
+  `dcs_retribution.lua`; start-at-player-start-up) and carrier support doctrine.
+- `mission/clock.py` (T0, phases, interpolated air state), `mission/slots.py` (human seats incl.
+  guests in other flights), `mission/kneeboard.py` (Pillow pages), `measure.py` (units),
+  `lua/sortie_carrier.lua`; rewrote `mission/flights.py`; concurrency cap in `mission/budget.py`.
+- Orbit flights now have station time (this is why AWACS/tankers were missing from missions:
+  their planned window ended before the player launched and they were filtered out).
+- ATO: `SAR` plane guard and recovery tanker per carrier; SH-60B squadrons in the Gulf template.
+- Service: pre-launch resolution, events read from client/server/%TEMP%, server mission copy.
+- GUI: co-op and server settings, units toggle, slot table, kneeboard/clock info, per-pilot debrief.
+- 162 tests pass. Still nothing run in DCS.

@@ -56,6 +56,7 @@ def ingest(st: State, ato: Ato, sortie: SortieResult, events: List[Dict[str, Any
     player_group = sortie.summary.get("player_group", "")
     facts = aar.analyze(events, manifest, player_group)
     rng = st.rng("debrief")
+    multiplayer = bool(sortie.summary.get("stats", {}).get("multiplayer"))
     side = st.meta.player_side
     consequences: List[str] = []
 
@@ -68,7 +69,9 @@ def ingest(st: State, ato: Ato, sortie: SortieResult, events: List[Dict[str, Any
         if flt is None:
             continue
         f = facts["flights"][flt.id]
-        res = FlightResult(flight_id=flt.id, lost=min(flt.count, f["lost"]),
+        # Client seats nobody occupied never existed in DCS: no airframe, fuel or weapons were used
+        flown = max(0, flt.count - (f.get("absent", 0) if multiplayer else 0))
+        res = FlightResult(flight_id=flt.id, lost=min(flown, f["lost"]),
                            pilots_lost=min(flt.count, f["pilots_lost"]), kills_air=f["kills_air"],
                            kills_ground=f["kills_ground"], kills_naval=f["kills_naval"],
                            kills_structure=f["kills_structure"], simulated=True)
@@ -81,12 +84,12 @@ def ingest(st: State, ato: Ato, sortie: SortieResult, events: List[Dict[str, Any
             sq.losses += res.lost
             sq.kills += res.kills_air
             if v.get("airborne_start") or sq.airbase_id not in readback_bases:
-                charge_sortie(st, sq, flt.count, flt.task, d)      # nothing drawn from a DCS warehouse
+                charge_sortie(st, sq, flown, flt.task, d)          # nothing drawn from a DCS warehouse
             else:
-                sq.sorties_flown += flt.count
+                sq.sorties_flown += flown
         # effects DCS events cannot report: runway damage and CAS pressure on the front
         if flt.task in STRIKE_TASKS and pkg.target.kind in ("airbase", "front") and res.success > 0:
-            power = (flt.count - res.lost) * res.success
+            power = (flown - res.lost) * res.success
             airwar.apply_strike(st, pkg, flt, power, FlightResult(flight_id="x"), rng)
         flt.status, flt.result = "simulated", res.model_dump()
         sortie.flights[flt.id] = res
@@ -153,6 +156,7 @@ def ingest(st: State, ato: Ato, sortie: SortieResult, events: List[Dict[str, Any
     sortie.summary.update({
         "duration_s": facts["duration_s"], "ended": facts["ended"], "aircraft_lost": {"blue": blue, "red": red},
         "consequences": consequences, "warehouse_notes": notes, "events": len(events),
+        "humans": facts["humans"],
         "task": flt.task if flt else None, "target": pkg.target.name if pkg else None,
     })
     log.info("sortie ingested", extra={"turn": st.meta.turn, "events": len(events), "success": success})

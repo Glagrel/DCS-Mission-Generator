@@ -14,7 +14,7 @@ LUA_DIR = paths.PROJECT_ROOT / "sortie" / "lua"
 MOOSE_FILE = paths.PROJECT_ROOT / "vendor" / "moose" / "Moose_.lua"
 # load order matters: json -> core -> the rest
 CORE_SCRIPTS = ["sortie_json.lua", "sortie_core.lua", "sortie_events.lua", "sortie_warehouse.lua",
-                "sortie_spawn.lua"]
+                "sortie_carrier.lua", "sortie_spawn.lua"]
 ATC_SCRIPTS = ["sortie_atc.lua"]
 
 

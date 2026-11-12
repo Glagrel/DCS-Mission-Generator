@@ -102,3 +102,12 @@ def runtime_dir(saved_games: Path) -> Path:
 
 def events_file(saved_games: Path) -> Path:
     return runtime_dir(saved_games) / "events.jsonl"
+
+
+def server_saved_games_candidates(root: Optional[Path] = None) -> list:
+    """Dedicated-server profiles next to the client profile (DCS.server*, DCS.dedicated*)."""
+    root = root or saved_games_root()
+    if not root.is_dir():
+        return []
+    return sorted(p for p in root.iterdir()
+                  if p.is_dir() and p.name.lower().startswith(("dcs.server", "dcs.dedicated", "dcs_server")))

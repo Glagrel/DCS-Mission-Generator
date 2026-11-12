@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .. import config, paths, terrain, theater, units
+from .. import config, measure, paths, terrain, theater, units
 from ..campaign import CampaignError, CareerOptions, owned
 from ..db import Store
 from ..mission import scripts
@@ -29,6 +29,11 @@ class SettingsPatch(BaseModel):
     owned_modules: Optional[List[str]] = None
     profile: Optional[str] = None
     coop_slots: Optional[int] = None
+    coop_extra_slots: Optional[int] = None
+    coop_modules: Optional[List[str]] = None
+    server_saved_games: Optional[str] = None
+    save_to_server: Optional[bool] = None
+    units: Optional[str] = None
     atc_enabled: Optional[bool] = None
     voice: Optional[str] = None
     srs_path: Optional[str] = None
@@ -71,6 +76,10 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
             "moose": scripts.MOOSE_FILE.is_file(), "moose_path": str(scripts.MOOSE_FILE),
             "terrains": {k: terrain.is_supported(k) for k in terrain.TERRAINS},
             "difficulties": list(config.defaults(s)["difficulty"]), "voices": list(config.VOICE_ENGINES),
+            "units": measure.labels(s.units),
+            "server_output_dir": str(config.server_output_dir(s)) if config.server_output_dir(s) else None,
+            "server_candidates": [str(p) for p in paths.server_saved_games_candidates()],
+            "event_files": [str(p) for p in config.event_file_candidates(s)],
         }
 
     @app.get("/api/settings")
@@ -86,11 +95,19 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
             raise HTTPException(400, f"voice must be one of {config.VOICE_ENGINES}")
         if "coop_slots" in data and not 1 <= int(data["coop_slots"]) <= 4:
             raise HTTPException(400, "coop_slots must be 1..4")
+        if "coop_extra_slots" in data and not 0 <= int(data["coop_extra_slots"]) <= 12:
+            raise HTTPException(400, "coop_extra_slots must be 0..12")
+        if "units" in data and data["units"] not in measure.SYSTEMS:
+            raise HTTPException(400, f"units must be one of {measure.SYSTEMS}")
+        if data.get("coop_modules") is not None:
+            bad = [m for m in data["coop_modules"] if m not in units.flyable_modules()]
+            if bad:
+                raise HTTPException(400, f"not flyable modules: {bad}")
         if "owned_modules" in data and data["owned_modules"] is not None:
             bad = [m for m in data["owned_modules"] if m not in units.flyable_modules()]
             if bad:
                 raise HTTPException(400, f"not flyable modules: {bad}")
-        for k in ("saved_games", "dcs_install", "output_dir"):
+        for k in ("saved_games", "dcs_install", "output_dir", "server_saved_games"):
             if k in data and data[k] == "":
                 data[k] = None                           # empty string = back to auto-detect
         new = svc.settings.model_copy(update=data)
@@ -163,7 +180,8 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
         """Generate Next Mission: the ATO assigns the sortie, the .miz is written."""
         res = guard(svc.generate_mission, cid)
         return {"ok": True, "path": res.path, "filename": res.filename, "warnings": res.warnings,
-                "stats": res.stats, "scripts": res.scripts, "briefing": res.briefing}
+                "stats": res.stats, "scripts": res.scripts, "briefing": res.briefing,
+                "extra_paths": res.extra_paths, "slots": res.slots}
 
     @app.get("/api/campaigns/{cid}/live")
     def live(cid: str):

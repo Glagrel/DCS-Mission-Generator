@@ -4,7 +4,8 @@ from __future__ import annotations
 import logging
 import uuid
 import zipfile
-from datetime import timezone
+import shutil
+from datetime import timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -18,7 +19,7 @@ from .. import config, terrain
 from ..atc import luacfg
 from ..models_ato import Ato
 from ..state import State
-from . import briefing, budget, forces, loadouts, scripts, warehouses
+from . import briefing, budget, clock, forces, kneeboard, loadouts, scripts, slots, warehouses
 from .flights import FlightBuilder
 
 log = logging.getLogger("sortie.mission")
@@ -41,6 +42,8 @@ class BuildResult(BaseModel):
     briefing: Dict[str, Any] = Field(default_factory=dict)
     scripts: List[str] = Field(default_factory=list)
     stats: Dict[str, Any] = Field(default_factory=dict)
+    extra_paths: List[str] = Field(default_factory=list)      # copies (dedicated server folder)
+    slots: List[Dict[str, Any]] = Field(default_factory=list)  # human seats in the mission
 
 
 def _country_classes() -> Dict[str, type]:
@@ -99,10 +102,11 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
     try:
         m = dcs.Mission(terrain.new_terrain(st.meta.terrain))
         _setup_coalitions(m, st)
-        m.start_time = st.now.replace(tzinfo=timezone.utc)
+        t0 = clock.mission_t0(ato, d)               # fast-forward: start just before the player's start-up
+        m.start_time = (st.now + timedelta(seconds=t0)).replace(tzinfo=timezone.utc)
         _setup_weather(m, st.meta.weather)
         warehouses.apply_to_mission(m, st, logistics)
-        sel = budget.select(st, ato, limits)
+        sel = budget.select(st, ato, limits, t0)
         man = forces.Manifest()
         ships = forces.add_naval(m, st, sel, man)
         carrier_units: Dict[str, str] = {}
@@ -116,12 +120,25 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
         forces.add_ground_units(m, st, sel, man)
         forces.add_supply_nodes(m, st, sel, man)
         forces.add_convoys(m, st, sel, man)
-        slots = max(1, int(settings.coop_slots))
+        coop, extra = max(1, int(settings.coop_slots)), max(0, int(settings.coop_extra_slots))
+        multiplayer = slots.is_multiplayer(coop, extra)
+        seats = slots.allocate(st, ato, sel.flights, coop, extra, settings.coop_modules, t0)
+        missing = slots.unowned_extra(extra, seats, ato.player_flight_id)
+        if missing:
+            warnings.append(f"{missing} of {extra} extra co-op seats could not be placed: no friendly flight "
+                            "on the ground this cycle flies an aircraft from the co-op module list.")
         skills = {"friendly": diff["friendly_skill"], "enemy": diff["enemy_skill"]}
-        fb = FlightBuilder(m, st, ato, sel, man, ships, slots, skills, warnings)
+        fb = FlightBuilder(m, st, ato, sel, man, ships, seats, multiplayer, skills, warnings, t0, d)
         fb.build_all()
-        brief = briefing.build(st, ato, reason)
+        moose_on = scripts.MOOSE_FILE.is_file() if with_moose is None else (with_moose and scripts.MOOSE_FILE.is_file())
+        for entry in fb.carrier_support:            # MOOSE's RESCUEHELO spawns from a late-activated template
+            entry["moose"] = moose_on
+            if moose_on:
+                m.find_group(entry["group"]).late_activation = True
+        slot_list = slots.summary(st, ato, seats, man)
+        brief = briefing.build(st, ato, reason, t0=t0, units=settings.units, slots=slot_list)
         text = briefing.text(st, brief)
+        kneeboard.attach(m, st, ato, brief, slot_list, t0, settings.units, warnings)
         m.set_sortie_text(f"SORTIE cycle {st.meta.turn}: {brief['mission']} - {brief['target']['name']}")
         m.set_description_text(text)
         side = st.meta.player_side
@@ -136,6 +153,9 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
             "snapshot_interval": 30, "spawn_m": limits["spawn_km"] * 1000.0,
             "despawn_m": limits["despawn_km"] * 1000.0, "manifest": dict(man),
             "late_groups": [n for n, v in man.items() if v.get("late")],
+            "client_groups": [r["group"] for r in slot_list if r["group"]],
+            "carrier_support": fb.carrier_support,
+            "event_dirs": [str(p.parent) + "\\" for p in config.event_file_candidates(settings)[:2]],
             "warehouses": warehouses.lua_table(st, logistics, carrier_units),
             "atc": luacfg.build(st, ato, settings, man),
         }
@@ -144,6 +164,16 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
         out_dir.mkdir(parents=True, exist_ok=True)
         path = out_dir / mission_filename(st)
         m.save(str(path))
+        kb_pages = kneeboard.write(m, path)
+        extra_paths: List[str] = []
+        server_dir = config.server_output_dir(settings)
+        if server_dir is not None and server_dir.resolve() != out_dir.resolve():
+            try:
+                server_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, server_dir / path.name)
+                extra_paths.append(str(server_dir / path.name))
+            except OSError as exc:
+                warnings.append(f"Could not copy the mission to the server folder {server_dir}: {exc}")
     except BuildError:
         raise
     except Exception as exc:
@@ -152,15 +182,21 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
     problems = verify_miz(path, names)
     if problems:
         raise BuildError("generated mission failed verification: " + "; ".join(problems))
+    warnings = list(dict.fromkeys(warnings))            # same note from several flights: say it once
     if sel.dropped:
         warnings.append("Performance limits left out: " + ", ".join(f"{v} {k}" for k, v in sel.dropped.items()))
-    stats = {"aircraft": sel.aircraft, "flights": len(sel.flights), "naval_groups": len(sel.naval_groups),
+    stats = {"aircraft": sel.total_aircraft, "peak_airborne": sel.aircraft, "flights": len(sel.flights),
+             "naval_groups": len(sel.naval_groups), "t0_s": round(t0),
+             "start_time": (st.now + timedelta(seconds=t0)).strftime("%H:%M"),
+             "human_seats": sum(r["seats"] for r in slot_list), "multiplayer": multiplayer,
+             "kneeboard_pages": len(kb_pages),
              "ground_groups": len(sel.ground_units) + len(sel.sam_sites) + len(sel.routes),
              "static_groups": sum(1 for v in man.values() if v["kind"] == "supply_node"),
-             "profile": profile, "coop_slots": slots, "size_kb": round(path.stat().st_size / 1024, 1)}
+             "profile": profile, "coop_slots": coop, "size_kb": round(path.stat().st_size / 1024, 1)}
     log.info("mission written %s", path, extra={"turn": st.meta.turn, **stats})
     return BuildResult(path=str(path), filename=path.name, sortie_id=sortie_id, warnings=warnings,
-                       manifest=dict(man), selection=sel.model_dump(), briefing=brief, scripts=names, stats=stats)
+                       manifest=dict(man), selection=sel.model_dump(), briefing=brief, scripts=names, stats=stats,
+                       extra_paths=extra_paths, slots=slot_list)
 
 
 def verify_miz(path: Path, script_names: List[str]) -> List[str]:

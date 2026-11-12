@@ -24,7 +24,12 @@ class Settings(BaseModel):
     db_path: str = str(paths.PROJECT_ROOT / "campaigns" / "sortie.db")
     owned_modules: Optional[List[str]] = None  # None = all flyable
     profile: str = "auto"                    # auto | light | standard | heavy
-    coop_slots: int = 1
+    coop_slots: int = 1                      # human seats in the career pilot's flight (1-4)
+    coop_extra_slots: int = 0                # extra co-op pilots flying their own aircraft in other flights
+    coop_modules: Optional[List[str]] = None  # aircraft those pilots may fly (None = any flyable type)
+    server_saved_games: Optional[str] = None  # dedicated server's Saved Games folder (e.g. ...\DCS.server1)
+    save_to_server: bool = False             # also write the mission into the server's Missions\SORTIE
+    units: str = "imperial"                  # imperial | metric (GUI, briefing, kneeboard)
     atc_enabled: bool = False
     voice: str = "off"
     srs_path: str = r"C:\Program Files\DCS-SimpleRadio-Standalone"
@@ -107,3 +112,30 @@ def resolved_output_dir(settings: Settings) -> Path:
 def resolved_runtime_dir(settings: Settings) -> Path:
     sg = resolved_saved_games(settings)
     return paths.runtime_dir(sg) if sg else paths.PROJECT_ROOT / "out" / "runtime"
+
+
+def server_output_dir(settings: Settings) -> Optional[Path]:
+    """The server's Missions/SORTIE folder when saving to a dedicated server is enabled."""
+    if settings.save_to_server and settings.server_saved_games:
+        return paths.missions_dir(Path(settings.server_saved_games))
+    return None
+
+
+def event_file_candidates(settings: Settings) -> List[Path]:
+    """Every place the mission may have written events.jsonl, most likely first.
+
+    The Lua tries the folders SORTIE gave it, then lfs.writedir() of whichever DCS instance runs
+    the mission (client or dedicated server), then %TEMP% - so all of them are watched."""
+    import os
+    out: List[Path] = [resolved_runtime_dir(settings) / "events.jsonl"]
+    if settings.server_saved_games:
+        out.append(paths.runtime_dir(Path(settings.server_saved_games)) / "events.jsonl")
+    tmp = os.environ.get("TEMP") or os.environ.get("TMP")
+    if tmp:
+        out.append(Path(tmp) / "SORTIE" / "events.jsonl")
+    seen, uniq = set(), []
+    for p in out:
+        if str(p).lower() not in seen:
+            seen.add(str(p).lower())
+            uniq.append(p)
+    return uniq

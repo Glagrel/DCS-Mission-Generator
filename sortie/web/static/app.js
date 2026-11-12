@@ -143,7 +143,19 @@ SORTIE.pages.settings = async function () {
         <table style="margin-top:8px"><tr><th>Profile</th><th>AI aircraft</th><th>Ground groups</th><th>Naval</th><th>Bubble km</th><th>Spawn/despawn km</th></tr>
         ${Object.keys(prof).map((k) => `<tr class="${k === status.profile ? 'me' : ''}"><td>${k}</td><td>${prof[k].max_air}</td><td>${prof[k].max_ground_groups}</td><td>${prof[k].max_naval_groups}</td><td>${prof[k].bubble_km}</td><td>${prof[k].spawn_km} / ${prof[k].despawn_km}</td></tr>`).join('')}</table>
         <p class="dim">Numbers are starting guesses; tune them in config/defaults.yaml.</p>
-        <label>Player slots (1 = single player, 2-4 = co-op client slots)</label><input type="number" id="st-coop" min="1" max="4" value="${s.coop_slots}"></div>
+        <label>Units shown in briefings, kneeboards and this GUI</label>
+        <select id="st-units">${['imperial', 'metric'].map((x) => `<option ${x === s.units ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+      <div class="panel"><h2>Co-op / multiplayer</h2>
+        <label>Seats in your own flight (1 = single player, 2-4 = friends fly as your wingmen)</label><input type="number" id="st-coop" min="1" max="4" value="${s.coop_slots}">
+        <label>Extra pilots flying their own aircraft in other flights of the mission (0-12)</label><input type="number" id="st-extra" min="0" max="12" value="${s.coop_extra_slots}">
+        <p class="dim">Each extra pilot gets a wingman seat in another friendly flight that departs during the mission, in an aircraft from the list below. The ATO still decides what those flights do. A seat nobody takes simply does not spawn and costs the campaign nothing.</p>
+        <label><input type="checkbox" id="st-coopall" ${s.coop_modules === null ? 'checked' : ''}> Extra pilots may fly any flyable aircraft (untick to choose)</label>
+        <div class="checks" id="st-coopmods" style="margin-top:6px;${s.coop_modules === null ? 'display:none' : ''}">${mods.map((m) => `<label><input type="checkbox" class="st-cmod" value="${esc(m.id)}" ${(s.coop_modules || []).includes(m.id) ? 'checked' : ''}> ${esc(m.id)}</label>`).join('')}</div>
+        <h3>Dedicated server</h3>
+        <label><input type="checkbox" id="st-srvon" ${s.save_to_server ? 'checked' : ''}> Also save each mission into the server's Missions\\SORTIE folder</label>
+        <label>Server Saved Games folder</label><input type="text" id="st-srv" value="${esc(s.server_saved_games || '')}" placeholder="${esc((status.server_candidates || [])[0] || 'e.g. C:\\Users\\you\\Saved Games\\DCS.server1')}">
+        ${(status.server_candidates || []).length ? '<p class="dim">Found: ' + status.server_candidates.map((c) => `<a href="#" class="st-srvpick">${esc(c)}</a>`).join(', ') + '</p>' : ''}
+        <p class="dim">Events are read from whichever of these the mission writes to:<br>${(status.event_files || []).map((f) => `<span class="path">${esc(f)}</span>`).join('<br>')}</p></div>
       <div class="panel"><h2>ATC / GCI / voice (optional, default off)</h2>
         <label><input type="checkbox" id="st-atc" ${s.atc_enabled ? 'checked' : ''}> Enable ATC/GCI layer (needs MOOSE in the mission)</label>
         <label>Voice engine (via MOOSE MSRS + SimpleRadio Standalone; text messages are always shown)</label>
@@ -159,6 +171,8 @@ SORTIE.pages.settings = async function () {
     </div></div>
     <p><button class="primary" id="st-save">Save settings</button></p>`;
   const boxes = () => Array.from(document.querySelectorAll('.st-mod'));
+  $('#st-coopall').onchange = (e) => { $('#st-coopmods').style.display = e.target.checked ? 'none' : ''; };
+  document.querySelectorAll('.st-srvpick').forEach((a) => { a.onclick = (e) => { e.preventDefault(); $('#st-srv').value = a.textContent; $('#st-srvon').checked = true; }; });
   $('#st-all').onclick = () => boxes().forEach((b) => { b.checked = true; });
   $('#st-none').onclick = () => boxes().forEach((b) => { b.checked = false; });
   $('#st-save').onclick = async () => {
@@ -166,6 +180,9 @@ SORTIE.pages.settings = async function () {
       await SORTIE.api('PUT', '/api/settings', {
         saved_games: $('#st-sg').value.trim(), dcs_install: $('#st-inst').value.trim(), output_dir: $('#st-out').value.trim(),
         profile: $('#st-profile').value, coop_slots: parseInt($('#st-coop').value, 10) || 1,
+        coop_extra_slots: parseInt($('#st-extra').value, 10) || 0, units: $('#st-units').value,
+        coop_modules: $('#st-coopall').checked ? null : Array.from(document.querySelectorAll('.st-cmod')).filter((b) => b.checked).map((b) => b.value),
+        save_to_server: $('#st-srvon').checked, server_saved_games: $('#st-srv').value.trim(),
         atc_enabled: $('#st-atc').checked, voice: $('#st-voice').value, srs_path: $('#st-srs').value,
         srs_port: parseInt($('#st-srsport').value, 10) || 5002, piper_voice: $('#st-piper').value,
         google_credentials: $('#st-google').value, owned_modules: boxes().filter((b) => b.checked).map((b) => b.value) });

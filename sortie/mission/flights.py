@@ -1,23 +1,30 @@
-"""Flight groups for the mission: the player's flight (SP or co-op client slots) and AI."""
+"""Flight groups for the mission: human slots (single player or co-op) and AI.
+
+Nothing pops into existence mid-mission: a flight is either already airborne when the
+mission starts (it took off before T0) or parked at its base and takes off on schedule.
+"""
 from __future__ import annotations
 
 import logging
 from typing import Any, Dict, List, Optional
 
-from dcs import task
+from dcs import action, condition, task, triggers
 from dcs.mission import StartType
+from dcs.point import PointAction
 from dcs.terrain.terrain import NoParkingSlotError
 from dcs.unit import Skill
 
-from .. import terrain, units
+from .. import geo, terrain, units
 from ..models_ato import Ato, Flight, Package
 from ..state import State
-from . import loadouts
+from . import clock, loadouts, slots
 from .budget import Selection, gname
 from .forces import Manifest
 
 log = logging.getLogger("sortie.mission")
 SKILLS = {"Average": Skill.Average, "Good": Skill.Good, "High": Skill.High, "Excellent": Skill.Excellent}
+RECOVERY_TANKER_ALT_M, RECOVERY_TANKER_SPEED_MS = 1829.0, 141.0     # 6,000 ft, 274 kt (MOOSE defaults)
+PLANE_GUARD_ALT_M, PLANE_GUARD_OFFSET_M = 90.0, 1852.0              # 300 ft, 1 nm to starboard
 
 
 def main_task(aircraft: str, sortie_task: str):
@@ -31,90 +38,175 @@ def main_task(aircraft: str, sortie_task: str):
 
 class FlightBuilder:
     def __init__(self, m, st: State, ato: Ato, sel: Selection, man: Manifest, ships: Dict[str, Any],
-                 coop_slots: int, skills: Dict[str, str], warnings: List[str]) -> None:
+                 seats: Dict[str, List[int]], multiplayer: bool, skills: Dict[str, str], warnings: List[str],
+                 t0: float, d: Dict[str, Any]) -> None:
         self.m, self.st, self.ato, self.sel, self.man = m, st, ato, sel, man
-        self.ships, self.coop_slots, self.skills, self.warnings = ships, max(1, coop_slots), skills, warnings
+        self.ships, self.seats, self.multiplayer = ships, seats, multiplayer
+        self.skills, self.warnings, self.t0, self.d = skills, warnings, t0, d
         self.groups: Dict[str, Any] = {}          # flight id -> pydcs group
+        self.carrier_support: List[Dict[str, Any]] = []
+        self.parked: Dict[str, List[Any]] = {}    # base id -> [(take-off time, group)] for stand re-use
 
     # -- public --------------------------------------------------------------------------
     def build_all(self) -> None:
-        player_pkg, _ = self.ato.find_flight(self.ato.player_flight_id)
         for fid in self.sel.flights:
             pkg, f = self.ato.find_flight(fid)
-            on_ground = pkg.id == player_pkg.id or f.is_player
-            self.groups[fid] = self._build(pkg, f, on_ground)
+            self.groups[fid] = self._build(pkg, f)
         for fid in self.sel.flights:              # second pass: tasks that reference other groups
             pkg, f = self.ato.find_flight(fid)
             if not f.is_player:
                 self._tasks(pkg, f, self.groups[fid])
 
+    def _carrier_of(self, pkg: Package):
+        """Ship group when the package target is a carrier that is in the mission."""
+        if pkg.target.kind != "airbase":
+            return None
+        base = self.st.airbases.get(pkg.target.id)
+        return self.ships.get(base.naval_group) if base and base.kind == "carrier" else None
+
     # -- creation ------------------------------------------------------------------------
-    def _build(self, pkg: Package, f: Flight, on_ground: bool):
-        m, st = self.m, self.st
+    def _build(self, pkg: Package, f: Flight):
+        m, st, t0 = self.m, self.st, self.t0
         sq = st.squadrons[f.squadron_id]
         base = st.airbases[sq.airbase_id]
         actype = units.aircraft_type(f.aircraft)
         country = m.country(sq.country)
         mt = main_task(f.aircraft, f.task)
         name = gname("flt", f.id)
-        start = StartType.Cold if f.is_player else StartType.Warm
-        group = None
-        if on_ground:
-            try:
+        humans = self.seats.get(f.id, [])
+        ph = clock.GROUND if (f.is_player or humans) else clock.phase(f, t0)
+        group, first, delay = None, 1, 0.0
+        boat = self._carrier_of(pkg)
+        if ph == clock.GROUND:
+            start = StartType.Cold if humans else StartType.Warm
+            delay = 0.0 if humans else clock.start_delay(f, t0, self.d)
+
+            def make(how=None):
+                how = how or start
                 if base.kind == "carrier" and base.naval_group in self.ships:
-                    group = m.flight_group_from_unit(country, name, actype, self.ships[base.naval_group],
-                                                     maintask=mt, start_type=start, group_size=f.count)
-                elif base.dcs_name:
-                    group = m.flight_group_from_airport(country, name, actype, m.terrain.airports[base.dcs_name],
-                                                        maintask=mt, start_type=start, group_size=f.count)
+                    return m.flight_group_from_unit(country, name, actype, self.ships[base.naval_group],
+                                                    maintask=mt, start_type=how, group_size=f.count)
+                if base.dcs_name:
+                    return m.flight_group_from_airport(country, name, actype, m.terrain.airports[base.dcs_name],
+                                                       maintask=mt, start_type=how, group_size=f.count)
+                return None
+
+            reused = False
+            try:
+                group = make()
             except (NoParkingSlotError, RuntimeError, IndexError) as exc:
-                self.warnings.append(f"{f.callsign}: no parking at {base.name} ({exc}); starting airborne")
-                group = None
+                # ramp is full: take over the stands of a flight that has left before we start up
+                if self._free_stands(base.id, delay):
+                    try:
+                        group, reused = make(), True
+                    except (NoParkingSlotError, RuntimeError, IndexError):
+                        group = None
+                if group is None and not humans:
+                    # still no stand: line up on the runway at take-off time and go
+                    try:
+                        group, reused = make(StartType.Runway), True
+                        delay = clock.rel(f.waypoints[0].eta_s, t0)
+                    except Exception:
+                        group = None
+                if group is None:
+                    self.warnings.append(f"{f.callsign}: no free parking at {base.name}; this flight enters "
+                                         f"airborne over its base at take-off time ({exc})")
+            if group is not None:
+                self.parked.setdefault(base.id, []).append((clock.rel(f.waypoints[0].eta_s, t0), group))
+                if reused:
+                    self._activate_at(group, delay)        # appears on its stand once the stand is free
+                elif delay > 30:
+                    self._start_at(group, delay)           # parked and cold until its own start-up time
         if group is None:
-            wp = f.waypoints[1] if len(f.waypoints) > 1 else f.waypoints[0]
-            origin = (base.lat, base.lon) if on_ground else (wp.lat, wp.lon)
-            alt = max(600.0, wp.alt_m if not on_ground else min(wp.alt_m, 2500.0))
-            group = m.flight_group_inflight(country, name, actype, terrain.to_point(m.terrain, *origin),
-                                            int(alt), int(wp.speed_kmh or 500), maintask=mt, group_size=f.count)
-            if not on_ground:
-                group.start_time = int(max(0.0, (wp.eta_s or 0.0) - 60.0))
-        self._crew(f, sq, group)
+            if ph == clock.GROUND:                         # parking fallback: appear over the base on time
+                pos, alt, spd = (base.lat, base.lon), 1500.0, f.waypoints[1].speed_kmh or 500.0
+                state = None
+            else:
+                state = clock.air_state(f, t0)
+                pos, alt, spd, first = (state.lat, state.lon), state.alt_m, state.speed_kmh, state.next_index
+                if boat is not None and f.task in ("SAR", "TANKER"):
+                    pos, alt = self._station_by_boat(boat, f.task)
+            group = m.flight_group_inflight(country, name, actype, terrain.to_point(m.terrain, *pos),
+                                            int(max(alt, 60)), int(spd or 500), maintask=mt, group_size=f.count)
+            if ph == clock.GROUND:
+                group.start_time = int(clock.rel(f.waypoints[0].eta_s, t0))
+            elif state is not None and state.on_station:
+                group.points[0].sortie_action = "orbit"
+                group.points[0].sortie_hold = state.hold_s
+        self._crew(f, sq, group, humans)
         self._payload(f, group)
         group.set_frequency(f.freq)
-        first = 1 if on_ground else 2          # airborne flights spawn at their second waypoint
-        if not on_ground and len(f.waypoints) > 1:
-            group.points[0].sortie_action = f.waypoints[1].action
         for wp in f.waypoints[first:-1]:
-            mp = group.add_waypoint(terrain.to_point(m.terrain, wp.lat, wp.lon), int(max(wp.alt_m, 100)),
+            mp = group.add_waypoint(terrain.to_point(m.terrain, wp.lat, wp.lon), int(max(wp.alt_m, 60)),
                                     int(wp.speed_kmh or 500), wp.name)
-            mp.sortie_action = wp.action        # private marker used by _tasks
+            mp.ETA = int(clock.rel(wp.eta_s, t0))
+            mp.sortie_action, mp.sortie_hold = wp.action, wp.hold_s
         self._land(group, base)
         f.callsign = self._dcs_callsign(group) or f.callsign
+        airborne = group.points[0].type == "Turning Point"
         self.man.add(name, "flight", f.id, len(group.units), player=f.is_player, task=f.task,
                      squadron=sq.id, coalition=f.coalition, aircraft=f.aircraft, callsign=f.callsign,
-                     airborne_start=group.points[0].type == "Turning Point",
-                     end_s=f.waypoints[-1].eta_s or 0.0)
+                     airborne_start=airborne, phase=ph, start_delay_s=round(delay),
+                     shared_stand=bool(getattr(group, "late_activation", False)),
+                     end_s=clock.rel(f.waypoints[-1].eta_s, t0),
+                     clients=[group.units[i].name for i in humans], base=base.id)
         return group
 
-    def _crew(self, f: Flight, sq, group) -> None:
+    def _free_stands(self, base_id: str, start_s: float) -> bool:
+        """Release the parking of groups that take off at least 5 minutes before `start_s`."""
+        freed = False
+        for dep, og in self.parked.get(base_id, []):
+            if dep + 300 < start_s and not getattr(og, "sortie_freed", False):
+                try:
+                    freed = bool(self.m.clear_parking_slots(og)) or freed
+                    og.sortie_freed = True
+                except Exception as exc:
+                    log.debug("could not free stands of %s: %s", og.name, exc)
+        return freed
+
+    def _start_at(self, group, seconds: float) -> None:
+        """Uncontrolled (parked, engines off) until a one-shot trigger pushes the Start command."""
+        group.add_trigger_action(task.StartCommand())
+        group.uncontrolled = True
+        trig = triggers.TriggerOnce(comment=f"{group.name} start-up")
+        trig.add_condition(condition.TimeAfter(int(seconds)))
+        trig.add_action(action.AITaskPush(group.id, len(group.tasks)))
+        self.m.triggerrules.triggers.append(trig)
+
+    def _activate_at(self, group, seconds: float) -> None:
+        """Late-activated on its stand at `seconds` (used when a stand is shared in sequence)."""
+        group.late_activation = True
+        trig = triggers.TriggerOnce(comment=f"{group.name} activate")
+        trig.add_condition(condition.TimeAfter(int(max(1, seconds))))
+        trig.add_action(action.ActivateGroup(group.id))
+        self.m.triggerrules.triggers.append(trig)
+
+    def _station_by_boat(self, boat, sortie_task: str):
+        lat, lon = terrain.to_latlon(boat.position)
+        hdg = boat.units[0].heading
+        if sortie_task == "SAR":                           # plane guard: close aboard, starboard side
+            lat, lon = geo.destination((lat, lon), hdg + 90, PLANE_GUARD_OFFSET_M / 1000.0)
+            return (lat, lon), PLANE_GUARD_ALT_M
+        lat, lon = geo.destination((lat, lon), hdg + 180, 5.0)   # recovery tanker: overhead, astern
+        return (lat, lon), RECOVERY_TANKER_ALT_M
+
+    def _crew(self, f: Flight, sq, group, humans: List[int]) -> None:
         skill = SKILLS.get(self.skills["friendly" if f.coalition == self.st.meta.player_side else "enemy"],
                            SKILLS.get(sq.skill, Skill.Good))
         for u in group.units:
             u.skill = skill
-        if not f.is_player:
-            return
-        if self.coop_slots <= 1:
-            group.units[0].set_player()             # single player: one "Player" slot, AI wingmen
-        else:
-            for u in group.units[: self.coop_slots]:
-                u.set_client()                      # co-op: multi-client slots, remaining seats AI
+        for i in humans:
+            if self.multiplayer:
+                group.units[i].set_client()         # co-op: every human seat is a Client slot
+            else:
+                group.units[i].set_player()         # single player: the one "Player" slot
 
     def _payload(self, f: Flight, group) -> None:
         if not f.loadout:                       # ATO was planned before payloads were known
             f.loadout = loadouts.pick(f.aircraft, f.task)
         pyl = loadouts.pylons(f.aircraft, f.loadout)
         if not pyl:
-            if f.is_player:
+            if self.seats.get(f.id):
                 self.warnings.append(f"No stock loadout found for {f.aircraft}/{f.task}: aircraft spawn clean; "
                                      "re-arm on the ramp.")
             return
@@ -130,7 +222,6 @@ class FlightBuilder:
             ship = self.ships[base.naval_group]
             mp = group.add_waypoint(ship.position, 600, 400, "RTB")
             mp.type, mp.link_unit, mp.helipad_id = "Land", ship.units[0].id, ship.units[0].id
-            from dcs.point import PointAction
             mp.action = PointAction.Landing
         elif base.dcs_name:
             group.land_at(self.m.terrain.airports[base.dcs_name])
@@ -160,12 +251,34 @@ class FlightBuilder:
                 ids.append(g.id)
         return ids
 
+    def _orbit(self, p, pattern=None) -> None:
+        orbit = task.OrbitAction(int(p.alt), int(p.speed * 3.6), pattern or task.OrbitAction.OrbitPattern.RaceTrack)
+        hold = float(getattr(p, "sortie_hold", 0.0) or 0.0)
+        if hold > 0:
+            ctl = task.ControlledTask(orbit)
+            ctl.stop_after_duration(int(hold))     # then continue the route and land
+            p.tasks.append(ctl)
+        else:
+            p.tasks.append(orbit)
+
     def _tasks(self, pkg: Package, f: Flight, group) -> None:
         tgt = terrain.to_point(self.m.terrain, pkg.target.lat, pkg.target.lon)
         marks = {getattr(p, "sortie_action", ""): p for p in group.points}
-        if f.task in ("CAP", "INTERCEPT", "AWACS", "TANKER") and "orbit" in marks:
-            p = marks["orbit"]
-            p.tasks.append(task.OrbitAction(int(p.alt), int(p.speed * 3.6), task.OrbitAction.OrbitPattern.RaceTrack))
+        boat = self._carrier_of(pkg)
+        if boat is not None and f.task == "TANKER":
+            group.points[0].tasks.append(task.RecoveryTanker(boat.id, RECOVERY_TANKER_SPEED_MS,
+                                                             RECOVERY_TANKER_ALT_M, None))
+            self.man[group.name]["role"] = "recovery_tanker"
+        elif boat is not None and f.task == "SAR":
+            # MOOSE's RESCUEHELO keeps station on the moving ship (wired in sortie_carrier.lua);
+            # without MOOSE the helicopter flies this racetrack beside the ship's starting position
+            if "orbit" in marks:
+                self._orbit(marks["orbit"], task.OrbitAction.OrbitPattern.Circle)
+            self.man[group.name]["role"] = "plane_guard"
+            self.carrier_support.append({"role": "plane_guard", "group": group.name,
+                                         "carrier_unit": boat.units[0].name})
+        elif f.task in ("CAP", "INTERCEPT", "AWACS", "TANKER", "SAR") and "orbit" in marks:
+            self._orbit(marks["orbit"])
         elif f.task == "ESCORT":
             lead = self.groups.get(pkg.flights[0].id)
             if lead is not None and lead is not group:

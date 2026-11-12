@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from .. import geo
 from ..models_ato import Ato, Flight
+from . import clock
 from ..state import State
 
 SEP = "|"
@@ -37,7 +38,8 @@ class Selection(BaseModel):
     routes: List[str] = Field(default_factory=list)           # convoys
     naval_groups: List[str] = Field(default_factory=list)
     late: List[str] = Field(default_factory=list)             # "kind:id" activated by proximity
-    aircraft: int = 0
+    aircraft: int = 0                                         # peak airborne at the same time
+    total_aircraft: int = 0                                   # all aircraft that appear in the mission
     dropped: Dict[str, int] = Field(default_factory=dict)     # what the limits cut
     bubble_km: float = 0.0
 
@@ -47,42 +49,58 @@ def _flight_dist(f: Flight, path: List[geo.Pt]) -> float:
     return min(geo.point_path_km(p, path) for p in pts)
 
 
-def _window(f: Flight) -> Tuple[float, float]:
-    if not f.waypoints:
-        return 0.0, 0.0
-    return f.waypoints[0].eta_s or 0.0, f.waypoints[-1].eta_s or 0.0
+def _peak(intervals: List[Tuple[float, float, int]], a: float, b: float) -> int:
+    """Most aircraft airborne at any moment inside [a, b] among `intervals`."""
+    peak = 0
+    for t in [a] + [s for s, _, _ in intervals if a < s < b]:
+        peak = max(peak, sum(n for s, e, n in intervals if s <= t < e))
+    return peak
 
 
-def select(st: State, ato: Ato, limits: Dict[str, Any]) -> Selection:
+def select(st: State, ato: Ato, limits: Dict[str, Any], t0: float = 0.0) -> Selection:
+    """`t0` = cycle time the mission starts (see mission.clock). The aircraft limit caps how
+    many are in the air AT THE SAME TIME, not how many flights the mission may contain."""
     pkg, player = ato.find_flight(ato.player_flight_id or "")
     if player is None:
         raise ValueError("ATO has no player flight; nothing to build")
     path = [(w.lat, w.lon) for w in player.waypoints]
     bubble, spawn_km = float(limits["bubble_km"]), float(limits["spawn_km"])
-    t0, t1 = _window(player)
+    t1 = clock.window(player)[1] + 600.0
     sel = Selection(bubble_km=bubble)
+    side = player.coalition
+
+    def active(f: Flight) -> Tuple[float, float, int]:
+        dep, end = clock.window(f)
+        return max(dep, t0), end, f.count
 
     # --- flights -----------------------------------------------------------------------
-    sel.flights = [player.id] + [f.id for f in pkg.flights if f.id != player.id]
-    sel.aircraft = sum(f.count for f in pkg.flights)
-    side = player.coalition
+    # the player's package always flies; the limit never removes it
+    sel.flights = [player.id] + [f.id for f in pkg.flights if f.id != player.id
+                                 and clock.phase(f, t0) != clock.DONE]
+    busy: List[Tuple[float, float, int]] = [active(ato.find_flight(fid)[1]) for fid in sel.flights]
+    home_carriers = {b.id for b in st.airbases.values() if b.kind == "carrier" and any(
+        st.squadrons[ato.find_flight(fid)[1].squadron_id].airbase_id == b.id for fid in sel.flights)}
     cands: List[Tuple[float, Flight]] = []
     for p, f in ato.flights():
         if p.id == pkg.id or f.status != "planned":
             continue
-        a, b = _window(f)
-        if b < t0 or a > t1 + 600:                      # not airborne while the player is
+        dep, end = clock.window(f)
+        if end <= t0 or dep > t1:                      # landed before we start / leaves after we are home
             continue
         dist = _flight_dist(f, path)
-        support = f.task in ("AWACS", "TANKER") and f.coalition == side
+        support = f.task in ("AWACS", "TANKER", "SAR") and f.coalition == side
+        boat = support and p.target.kind == "airbase" and p.target.id in home_carriers
         if dist <= bubble or support:
-            cands.append((-1.0 if support else dist, f))
+            cands.append((-2.0 if boat else -1.0 if support else dist, f))
     for dist, f in sorted(cands, key=lambda x: (x[0], x[1].id)):
-        if sel.aircraft + f.count > limits["max_air"]:
+        a, b, n = active(f)
+        if _peak(busy, a, b) + n > limits["max_air"]:
             sel.dropped["flights"] = sel.dropped.get("flights", 0) + 1
             continue
         sel.flights.append(f.id)
-        sel.aircraft += f.count
+        busy.append((a, b, n))
+    sel.aircraft = _peak(busy, t0, max(e for _, e, _ in busy)) if busy else 0
+    sel.total_aircraft = sum(n for _, _, n in busy)
 
     # --- ground objects ----------------------------------------------------------------
     must: Set[str] = set()

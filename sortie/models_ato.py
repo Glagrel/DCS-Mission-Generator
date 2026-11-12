@@ -6,10 +6,10 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 MISSION_TYPES = ("CAP", "INTERCEPT", "ESCORT", "SWEEP", "SEAD", "DEAD", "STRIKE", "CAS", "INTERDICTION",
-                 "ANTISHIP", "RECON", "TANKER", "AWACS", "TRANSPORT")
+                 "ANTISHIP", "RECON", "TANKER", "AWACS", "TRANSPORT", "SAR")
 A2A = ("CAP", "ESCORT", "SWEEP")
 A2G = ("SEAD", "DEAD", "STRIKE", "CAS", "INTERDICTION", "ANTISHIP")
-SUPPORT = ("TANKER", "AWACS", "TRANSPORT", "RECON")
+SUPPORT = ("TANKER", "AWACS", "TRANSPORT", "RECON", "SAR")
 
 
 class Target(BaseModel):
@@ -27,7 +27,8 @@ class Waypoint(BaseModel):
     alt_m: float
     speed_kmh: float
     action: str = "fly"      # takeoff | fly | hold | ip | target | orbit | land
-    eta_s: Optional[float] = None   # seconds after mission start
+    eta_s: Optional[float] = None   # seconds after the start of the cycle
+    hold_s: float = 0.0             # time on station (orbit waypoints)
 
 
 class Flight(BaseModel):
