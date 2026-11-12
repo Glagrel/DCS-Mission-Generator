@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import random
 import uuid
 import zipfile
 import shutil
@@ -63,19 +64,12 @@ def _setup_coalitions(m, st: State) -> None:
         m.coalition[side] = co
 
 
-def _setup_weather(m, w: Dict[str, Any]) -> None:
+def _setup_weather(m, w: Dict[str, Any], when=None) -> None:
     if not w:
         return
-    wx = m.weather
-    d, s = int(w.get("wind_dir", 0)), float(w.get("wind_ms", 0))
-    wx.wind_at_ground = Wind(d, s)
-    wx.wind_at_2000 = Wind((d + 15) % 360, round(s * 1.6, 1))
-    wx.wind_at_8000 = Wind((d + 30) % 360, round(s * 2.4, 1))
-    wx.season_temperature = float(w.get("temp_c", 20))
-    wx.clouds_base = int(w.get("cloud_base_m", 2000))
-    wx.clouds_density = int(w.get("cloud_density", 0))
-    wx.clouds_thickness = int(w.get("cloud_thickness_m", 200))
-    wx.visibility_distance = int(float(w.get("visibility_km", 80)) * 1000)
+    from .. import weather
+    w = weather.normalize(dict(w), random.Random("wx"))
+    weather.apply(m, weather.at(w, when))
 
 
 def mission_filename(st: State) -> str:
@@ -105,7 +99,7 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
         hot = settings.player_start == "hot"
         t0 = clock.mission_t0(ato, d, hot)          # fast-forward: start just before the player's start-up
         m.start_time = (st.now + timedelta(seconds=t0)).replace(tzinfo=timezone.utc)
-        _setup_weather(m, st.meta.weather)
+        _setup_weather(m, st.meta.weather, st.now + timedelta(seconds=t0))
         warehouses.apply_to_mission(m, st, logistics)
         sel = budget.select(st, ato, limits, t0)
         man = forces.Manifest()
@@ -141,6 +135,7 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
         home = st.airbases[st.squadrons[pf.squadron_id].airbase_id]
         nav = navaids.home_nav(st, home, config.resolved_install(settings), m.terrain)
         brief = briefing.build(st, ato, reason, t0=t0, units=settings.units, slots=slot_list, nav=nav)
+        brief["stn"], brief["weapon_notes"] = dict(fb.stn), dict(fb.weapon_notes)
         text = briefing.text(st, brief)
         kneeboard.attach(m, st, ato, brief, slot_list, t0, settings.units, warnings)
         m.set_sortie_text(f"SORTIE cycle {st.meta.turn}: {brief['mission']} - {brief['target']['name']}")

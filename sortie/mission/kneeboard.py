@@ -111,6 +111,16 @@ def flight_page(st: State, card: Dict[str, Any], brief: Dict[str, Any], seats: D
     p.kv("Take-off", card["takeoff"])
     p.kv("TOT", card["tot"])
     p.kv("Radio", _freq(card["freq"]) + " AM")
+    if card.get("mode3"):
+        p.kv("IFF M3 / Laser", f"{card['mode3']}  /  {card['laser']}")
+    if card.get("bingo"):
+        p.kv("Bingo / Joker", f"{card['bingo']}  /  {card['joker']}")
+    stn = brief.get("stn", {}).get(card["id"])
+    if stn:
+        p.kv(card.get("link") or "Datalink", f"lead STN {stn}")
+    p.kv("Target", card.get("target_ddm", ""))
+    for note in brief.get("weapon_notes", {}).get(card["id"], [])[:3]:
+        p.line("Weather swap: " + note, small=True)
     if seats:
         p.kv("Your seats", "aircraft " + ", ".join(str(n) for n in seats.get("positions", [])))
     p.line(card["objective"], small=True)
@@ -132,8 +142,9 @@ def flight_page(st: State, card: Dict[str, Any], brief: Dict[str, Any], seats: D
 def support_page(st: State, brief: Dict[str, Any], units: str) -> bytes:
     p = Page("SUPPORT / THREATS", f"SORTIE cycle {brief['turn']} | mission starts {brief['mission_start']}")
     p.heading("Package " + brief["package"]["id"])
-    p.table([("CALLSIGN", 190), ("TYPE", 200), ("TASK", 120), ("FREQ", 120)],
-            [[r["callsign"], f"{r['count']} x {r['aircraft']}", r["task"], _freq(r["freq"])]
+    p.table([("CALLSIGN", 170), ("TYPE", 170), ("TASK", 100), ("FREQ", 100), ("M3", 70), ("STN", 80)],
+            [[r["callsign"], f"{r['count']} x {r['aircraft']}", r["task"], _freq(r["freq"]), r.get("mode3") or "-",
+              brief.get("stn", {}).get(r["id"], "-")]
              for r in brief["package"]["flights"]], small=True)
     p.heading("Support")
     rows = [[("RCVY TKR" if t.get("recovery") else "TANKER"), t["callsign"], _freq(t["freq"]),

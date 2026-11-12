@@ -14,10 +14,10 @@ from dcs.point import PointAction
 from dcs.terrain.terrain import NoParkingSlotError
 from dcs.unit import Skill
 
-from .. import geo, navaids, terrain, units
+from .. import geo, navaids, terrain, units, weather
 from ..models_ato import Ato, Flight, Package
 from ..state import State
-from . import clock, loadouts, slots
+from . import clock, codes, loadouts, slots
 from .budget import Selection, gname
 from .forces import Manifest
 
@@ -46,6 +46,12 @@ class FlightBuilder:
         self.groups: Dict[str, Any] = {}          # flight id -> pydcs group
         self.carrier_support: List[Dict[str, Any]] = []
         self.parked: Dict[str, List[Any]] = {}    # base id -> [(take-off time, group)] for stand re-use
+        self.stn: Dict[str, str] = {}             # flight id -> lead's Link 16 / SADL track number
+        self.weapon_notes: Dict[str, List[str]] = {}   # flight id -> weather weapon swaps
+        from datetime import timedelta
+        import random
+        self.wx = weather.at(weather.normalize(dict(st.meta.weather), random.Random("wx")),
+                             st.now + timedelta(seconds=t0)) if st.meta.weather else {}
 
     # -- public --------------------------------------------------------------------------
     def build_all(self) -> None:
@@ -56,6 +62,11 @@ class FlightBuilder:
             pkg, f = self.ato.find_flight(fid)
             if not f.is_player:
                 self._tasks(pkg, f, self.groups[fid])
+        try:
+            self.stn = codes.setup_datalinks(self.ato, self.groups)
+        except Exception as exc:                  # never let datalinks stop a mission build
+            log.warning("datalink set-up failed: %s", exc)
+            self.warnings.append(f"Datalinks were not set up: {exc}")
 
     def _carrier_of(self, pkg: Package):
         """Ship group when the package target is a carrier that is in the mission."""
@@ -135,6 +146,8 @@ class FlightBuilder:
                 group.points[0].sortie_hold = state.hold_s
         self._crew(f, sq, group, humans)
         self._payload(f, group)
+        if self.st.meta.era_kind != "ww2":
+            codes.set_laser(group, codes.laser(self.ato, f))
         group.set_frequency(f.freq)
         for wp in f.waypoints[first:-1]:
             mp = group.add_waypoint(terrain.to_point(m.terrain, wp.lat, wp.lon), int(max(wp.alt_m, 60)),
@@ -211,6 +224,17 @@ class FlightBuilder:
                 self.warnings.append(f"No stock loadout found for {f.aircraft}/{f.task}: aircraft spawn clean; "
                                      "re-arm on the ramp.")
             return
+        if self.wx:
+            pyl, notes, keep, dead = weather.adapt(units.aircraft_type(f.aircraft), list(pyl), self.wx)
+            if notes:
+                self.weapon_notes[f.id] = notes
+                if f.is_player or self.seats.get(f.id):
+                    self.warnings.append(f"{f.callsign}: weather swap {', '.join(notes)} "
+                                         f"({weather.describe(self.wx)})")
+            need = weather.NEEDS.get(f.task)
+            if need and dead and not (keep & need) and (f.is_player or self.seats.get(f.id)):
+                self.warnings.append(f"{f.callsign}: the weather rules out your {'/'.join(sorted(dead)).lower()} "
+                                     f"weapons and no GPS weapon fits ({weather.describe(self.wx)}).")
         for u in group.units:
             u.pylons.clear()                    # pydcs pre-fills a default loadout: start clean
             for p in pyl:
@@ -276,6 +300,11 @@ class FlightBuilder:
         self.man[group.name]["tacan"] = f"{chan}{band} {ident}"
 
     def _tasks(self, pkg: Package, f: Flight, group) -> None:
+        if f.task not in ("TANKER", "AWACS", "SAR", "TRANSPORT"):
+            group.points[0].tasks.append(task.OptRTBOnBingoFuel(True))      # AI goes home on bingo
+        if f.task in ("SEAD", "DEAD"):
+            # hold fire until the IP so the SEAD flight does not chase fighters into SAM cover
+            group.points[0].tasks.append(task.OptROE(task.OptROE.Values.ReturnFire))
         if f.task == "TANKER":
             self._tanker_beacon(f, group)
         tgt = terrain.to_point(self.m.terrain, pkg.target.lat, pkg.target.lon)
@@ -308,6 +337,8 @@ class FlightBuilder:
                     position={"x": -300, "y": 600, "z": -300}))
         elif f.task in ("SEAD", "DEAD", "CAS", "INTERDICTION", "ANTISHIP", "STRIKE"):
             at = marks.get("ip") or group.points[-2]
+            if f.task in ("SEAD", "DEAD"):
+                at.tasks.append(task.OptROE(task.OptROE.Values.OpenFire))
             ids = self._target_groups(pkg)
             if ids:
                 for gid in ids[:3]:

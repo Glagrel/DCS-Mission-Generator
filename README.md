@@ -171,7 +171,8 @@ with engines running (mission opens 3 minutes before take-off). It applies to ev
 
 Every aircraft type with a human seat gets kneeboard pages inside the mission (flight card with
 route, times, headings, distances, coordinates, loadout; a support/threat page with tankers,
-AWACS, package, air defences, weather). Open the kneeboard in the cockpit (default `RShift+K`).
+AWACS, package, air defences, weather, IFF Mode 3 and laser codes, bingo/joker, Link 16 /
+SADL track numbers). Open the kneeboard in the cockpit (default `RShift+K`).
 
 ### Units
 
@@ -259,3 +260,9 @@ No test needs DCS or touches your DCS folders; everything runs in temp directori
 | Mission not listed in DCS | Check the path shown after generation; set *Mission output folder* in Settings. |
 | Wrong DCS folder detected | Override both paths in Settings. |
 | Port in use | `python -m sortie gui --port 8770` |
+
+## Credits
+
+The weather model and its weapon limits, per-flight IFF/laser codes, bingo/joker figures, the
+Link 16 / SADL set-up and the AI SEAD hold-fire idea were adapted from
+[SQE (Squadron Campaign Engine)](https://github.com/MarkuzJuniuz/SQE) by MarkuzJuniuz, MIT licence.

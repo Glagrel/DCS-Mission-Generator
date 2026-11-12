@@ -34,14 +34,10 @@ def end_turn(st: State, d: Dict[str, Any], flown_in_dcs: Iterable[str] = ()) -> 
 
 
 def _drift_weather(st: State) -> None:
-    """Small random walk so consecutive sorties do not fly in identical weather."""
-    w, rng = st.meta.weather, st.rng("weather")
-    if not w:
-        return
-    w["wind_dir"] = int((w.get("wind_dir", 0) + rng.randint(-30, 30)) % 360)
-    w["wind_ms"] = max(0, min(15, w.get("wind_ms", 3) + rng.randint(-2, 2)))
-    w["cloud_density"] = max(0, min(9, w.get("cloud_density", 3) + rng.randint(-2, 2)))
-    w["cloud_base_m"] = max(300, min(5000, w.get("cloud_base_m", 2000) + rng.randint(-400, 400)))
+    """Stay or step to a neighbouring weather state so consecutive sorties change gradually."""
+    from .. import weather
+    if st.meta.weather:
+        weather.drift(st.meta.weather, st.rng("weather"))
 
 
 def _move_naval(st: State) -> None:

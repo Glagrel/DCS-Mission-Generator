@@ -53,7 +53,15 @@ and tested against fixtures/mocks only; see TEST_IN_DCS.md for the checks.
 15. **Fog of war** is not modelled: all enemy positions and SAMs are shown on the map.
 16. **Runway damage** is not reported by DCS events; airbase strikes flown in DCS are credited
     from weapons released and aircraft surviving.
-17. **Weather** uses simple cloud base/density/wind fields, not the DCS cloud presets.
+17. **Weather** is one of six states (clear .. storm) written with DCS cloud presets, fog,
+    turbulence and QNH; it steps at most one state per cycle. Laser/TV/unguided weapons the weather
+    rules out are swapped for a GPS bomb on the same pylon when one fits (thresholds in
+    `sortie/weather.py`); packages are not scrubbed for weather yet. Bingo/joker are generic planning
+    figures from internal fuel and route length, not per-type performance data.
+31. **Datalinks** (F-16C, F/A-18C Link 16; A-10C II SADL) are written as the Mission Editor writes
+    them: own flight as team members, same-package leads as donors, STNs on the kneeboard.
+    *Unverified in DCS.* Laser codes are set on aircraft that take them as a unit property (AV-8B);
+    other jets: enter the code from the kneeboard.
 18. **Co-op career** tracks only the pilot in slot 1 of the player flight.
 19. **Loadouts** are the first stock DCS payload tagged for the task, not optimised for the
     target; with no DCS install found aircraft are generated clean.

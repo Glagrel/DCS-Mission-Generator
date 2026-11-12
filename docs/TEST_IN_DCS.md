@@ -141,3 +141,14 @@ None of these has been run. Fill in **Actual** and **P/F** as you go. Unless sta
 | 8.1 | Three-sortie campaign | Gulf / A | Fly, debrief, generate ×3 | Each mission reflects the previous: destroyed SAMs/nodes stay damaged, fronts move, stocks change | | |
 | 8.2 | Assignment follows the war | Gulf / A | Let the enemy bomb your base (or lose fighters) | Later taskings shift toward CAP/intercept with matching reasons | | |
 | 8.3 | Reassignment | Lose all squadron aircraft | Debrief | Transfer to another squadron flying a module you own, with a reason | | |
+
+
+## Weather, codes and datalinks
+
+- [ ] Clouds in DCS match the briefing (state, base) and the wind sock agrees with the ATC wind call
+      (wind is FROM the briefed direction).
+- [ ] On a morning sortie with fog in the briefing, fog is present and thins out after 09:30.
+- [ ] Under low cloud a laser-bomb loadout arrives as JDAMs and the briefing lists the swap.
+- [ ] F-16C / F/A-18C: your wingmen show as team members (HSD / SA page) and the other Link 16
+      flights of the package as donors; STNs match the kneeboard. A-10C II: SADL the same way.
+- [ ] AI SEAD/DEAD flights do not engage fighters before the IP; AI flights return on bingo.

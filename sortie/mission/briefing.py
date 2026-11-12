@@ -8,7 +8,7 @@ from .. import geo, measure
 from ..ato import planner
 from ..models_ato import Ato, Flight
 from ..state import State
-from . import loadouts
+from . import codes, loadouts
 
 JOIN_NOTE = "JOIN is the package rendezvous in friendly territory: link up there and push at the JOIN time."
 
@@ -49,12 +49,19 @@ def flight_card(st: State, ato: Ato, flt: Flight, t0: float, units: str) -> Dict
                     "alt": measure.alt(w.alt_m, units), "speed": measure.speed(w.speed_kmh, units),
                     "leg": measure.dist(leg, units) if i else "-", "hdg": f"{hdg:03.0f}" if i else "-"})
     tgt_wp = next((w for w in flt.waypoints if w.action in ("target", "orbit")), flt.waypoints[-1])
+    fuel = codes.fuel_plan(flt, (base.lat, base.lon))
+    modern = st.meta.era_kind != "ww2"
     return {"id": flt.id, "callsign": flt.callsign, "aircraft": flt.aircraft, "count": flt.count,
             "task": flt.task, "freq": flt.freq, "squadron": sq.name, "base": base.name,
             "loadout": flt.loadout, "stores": loadouts.describe(flt.aircraft, flt.loadout),
             "package": pkg.id, "target": pkg.target.name, "tot": _hhmm(st, tgt_wp.eta_s),
             "takeoff": _hhmm(st, flt.waypoints[0].eta_s), "waypoints": wps,
-            "objective": OBJECTIVES.get(flt.task, "Complete the tasking.")}
+            "objective": OBJECTIVES.get(flt.task, "Complete the tasking."),
+            "mode3": codes.mode3(ato, flt) if modern else "", "laser": codes.laser(ato, flt) if modern else "",
+            "link": codes.link_of(flt.aircraft) or "",
+            "bingo": codes.fuel_text(fuel["bingo_kg"], measure.norm(units)) if fuel else "",
+            "joker": codes.fuel_text(fuel["joker_kg"], measure.norm(units)) if fuel else "",
+            "target_ddm": " ".join(measure.ddm(pkg.target.lat, pkg.target.lon))}
 
 
 def nav_text(nav: Dict[str, Any]) -> List[str]:
@@ -93,14 +100,17 @@ def build(st: State, ato: Ato, reason: str, t0: float = 0.0, units: str = "imper
     if be:
         d = geo.dist_km((be.lat, be.lon), (pkg.target.lat, pkg.target.lon))
         bulls = f"{geo.bearing((be.lat, be.lon), (pkg.target.lat, pkg.target.lon)):03.0f}/{measure.dist(d, units)}"
-    w = st.meta.weather
+    from .. import weather as _wx
+    import random as _r
+    w = _wx.at(_wx.normalize(dict(st.meta.weather), _r.Random("wx")), st.now + timedelta(seconds=t0)) if st.meta.weather else {}
     tankers = [{**t, "alt": measure.alt(t.get("alt_m", 0), units)} for t in sup.get("tankers", [])]
     return {
         "assigned": True, "reason": reason, "turn": ato.turn, "date": st.meta.date, "units": measure.norm(units),
         "mission": flt.task, "package": {"id": pkg.id, "mission": pkg.mission, "freq": pkg.freq,
-                                         "flights": [_flight_row(st, f) for f in pkg.flights]},
+                                         "flights": [_flight_row(st, f, ato) for f in pkg.flights]},
         "flight": {k: card[k] for k in ("id", "callsign", "aircraft", "count", "freq", "squadron", "base",
-                                        "loadout", "stores")},
+                                        "loadout", "stores", "mode3", "laser", "bingo", "joker", "link")},
+        "target_ddm": card["target_ddm"], "stn": {}, "weapon_notes": {},
         "target": {**pkg.target.model_dump(), "bullseye": bulls},
         "tot": card["tot"], "takeoff": card["takeoff"], "objective": card["objective"],
         "mission_start": _hhmm(st, t0), "t0_s": t0,
@@ -130,13 +140,15 @@ def _threats(st: State, ato: Ato, flt: Flight, units: str) -> Dict[str, Any]:
 def _weather(w: Dict[str, Any], units: str) -> str:
     if not w:
         return ""
-    return (f"wind {measure.wind(w.get('wind_dir', 0), w.get('wind_ms', 0), units)}, cloud base "
-            f"{measure.alt(w.get('cloud_base_m', 0), units)}, {measure.temp(w.get('temp_c', 15), units)}")
+    from .. import weather
+    return weather.describe(w, units) + "  [" + weather.metar(w) + "]"
 
 
-def _flight_row(st: State, f: Flight) -> Dict[str, Any]:
+def _flight_row(st: State, f: Flight, ato: Optional[Ato] = None) -> Dict[str, Any]:
+    ato = ato or st.ato
     return {"id": f.id, "callsign": f.callsign, "aircraft": f.aircraft, "count": f.count, "task": f.task,
-            "freq": f.freq, "squadron": st.squadrons[f.squadron_id].name, "player": f.is_player}
+            "freq": f.freq, "squadron": st.squadrons[f.squadron_id].name, "player": f.is_player,
+            "mode3": codes.mode3(ato, f) if ato and st.meta.era_kind != "ww2" else ""}
 
 
 def text(st: State, b: Dict[str, Any]) -> str:
@@ -156,13 +168,24 @@ def text(st: State, b: Dict[str, Any]) -> str:
     L.append("")
     L.append(f"FLIGHT: {f['callsign']}  {f['count']} x {f['aircraft']}  ({f['squadron']}, {f['base']})")
     L.append(f"RADIO: flight/package {_freq(f['freq'])}")
+    if f.get("mode3"):
+        L.append(f"IFF MODE 3: {f['mode3']}   LASER CODE: {f['laser']}")
+    if f.get("bingo"):
+        L.append(f"BINGO {f['bingo']}   JOKER {f['joker']}  (planning figures)")
+    L.append(f"TARGET: {b['target']['name']}  {b.get('target_ddm', '')}")
+    for note in b.get("weapon_notes", {}).get(f["id"], []):
+        L.append(f"WEATHER WEAPON SWAP: {note}")
     if f["stores"]:
         L.append("LOADOUT: " + ", ".join(f["stores"]))
     L.append("")
     L.append("PACKAGE:")
     for r in p["flights"]:
         L.append(f"  {r['callsign']:<12} {r['count']} x {r['aircraft']:<14} {r['task']:<8} {_freq(r['freq'])}"
+                 + (f"  M3 {r['mode3']}" if r.get("mode3") else "")
+                 + (f"  STN {b['stn'][r['id']]}" if b.get("stn", {}).get(r["id"]) else "")
                  + ("  <- YOU" if r["player"] else ""))
+    if f.get("link") and any(b.get("stn", {}).values()):
+        L.append(f"  {f['link']}: your flight are team members; other {f['link']} flights of the package are donors.")
     if len(b["slots"]) > 1 or any(s["seats"] > 1 for s in b["slots"]):
         L.append("")
         L.append("CO-OP SLOTS:")

@@ -68,6 +68,8 @@ def build_state(t: Theater, opt: CareerOptions, settings: Optional[config.Settin
         weather=dict(t.start.weather), owned_modules=owned(settings),
         production={s: dict(c.production) for s, c in t.coalitions.items() if c.production})
     st = State(meta=meta)
+    from . import weather as _wx
+    _wx.normalize(st.meta.weather, st.rng("weather"))
     cap = d["logistics"]["airbase_fuel_cap_t"]
     ww2 = t.era.kind == "ww2"
 
