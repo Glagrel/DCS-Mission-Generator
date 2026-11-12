@@ -18,12 +18,13 @@ from ..models_ato import Ato, Flight, Waypoint
 DONE, AIRBORNE, GROUND = "done", "airborne", "ground"
 
 
-def mission_t0(ato: Ato, d: Dict[str, Any]) -> float:
-    """Cycle time at which the DCS mission starts."""
+def mission_t0(ato: Ato, d: Dict[str, Any], hot: bool = False) -> float:
+    """Cycle time at which the DCS mission starts (`hot` = engines already running: less lead)."""
     _, flt = ato.find_flight(ato.player_flight_id or "")
     if flt is None or not flt.waypoints:
         return 0.0
-    startup = float(d.get("mission", {}).get("startup_minutes", 10)) * 60.0
+    key, default = ("hot_startup_minutes", 3) if hot else ("startup_minutes", 10)
+    startup = float(d.get("mission", {}).get(key, default)) * 60.0
     return max(0.0, (flt.waypoints[0].eta_s or 0.0) - startup)
 
 

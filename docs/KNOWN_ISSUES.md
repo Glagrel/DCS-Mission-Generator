@@ -78,3 +78,7 @@ and tested against fixtures/mocks only; see TEST_IN_DCS.md for the checks.
     each other's flight cards (labelled by callsign).
 28. **Dedicated server on another PC:** copy the event file back or point *Server Saved Games*
     at a share; the mission falls back to that server's own Saved Games folder.
+29. **Campaigns created before the carrier-support update** have no SH-60B squadrons, so they get
+    the recovery tanker but no plane guard. Start a new career to get both.
+30. **JOIN timing for AI:** the AI does not hold at the JOIN point; flights are timed to arrive by
+    the push time but may pass through early.

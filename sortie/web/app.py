@@ -48,6 +48,7 @@ class SettingsPatch(BaseModel):
     server_saved_games: Optional[str] = None
     save_to_server: Optional[bool] = None
     units: Optional[str] = None
+    player_start: Optional[str] = None
     atc_enabled: Optional[bool] = None
     voice: Optional[str] = None
     srs_path: Optional[str] = None
@@ -124,6 +125,8 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
             raise HTTPException(400, "coop_extra_slots must be 0..12")
         if "units" in data and data["units"] not in measure.SYSTEMS:
             raise HTTPException(400, f"units must be one of {measure.SYSTEMS}")
+        if "player_start" in data and data["player_start"] not in ("cold", "hot"):
+            raise HTTPException(400, "player_start must be cold or hot")
         if data.get("coop_modules") is not None:
             bad = [m for m in data["coop_modules"] if m not in units.flyable_modules()]
             if bad:

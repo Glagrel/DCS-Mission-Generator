@@ -30,6 +30,7 @@ class Settings(BaseModel):
     server_saved_games: Optional[str] = None  # dedicated server's Saved Games folder (e.g. ...\DCS.server1)
     save_to_server: bool = False             # also write the mission into the server's Missions\SORTIE
     units: str = "imperial"                  # imperial | metric (GUI, briefing, kneeboard)
+    player_start: str = "cold"               # cold | hot: how human aircraft start on the ramp/deck
     atc_enabled: bool = False
     voice: str = "off"
     srs_path: str = r"C:\Program Files\DCS-SimpleRadio-Standalone"

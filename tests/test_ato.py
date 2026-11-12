@@ -70,7 +70,9 @@ def test_generate_ato(theaters, tid):
         assert f.waypoints[0].action == "takeoff" and f.waypoints[-1].action == "land"
         assert f.freq > 0 and f.callsign and p.reason
         etas = [w.eta_s for w in f.waypoints]
-        assert etas == sorted(etas) and etas[0] >= 0
+        assert etas == sorted(etas)
+        # only support that was already airborne when the cycle began may have left "before" it
+        assert etas[0] >= 0 or f.task in ("AWACS", "TANKER", "SAR")
         base = st.airbases[sq.airbase_id]
         assert geo.dist_km((base.lat, base.lon), (p.target.lat, p.target.lon)) <= units.combat_radius_km(f.aircraft)
         used[sq.id] = used.get(sq.id, 0) + f.count

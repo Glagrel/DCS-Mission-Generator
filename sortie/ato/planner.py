@@ -15,6 +15,8 @@ from .radio import RadioPlan, callsign, clamp_to_aircraft, tacan_channel
 
 log = logging.getLogger("sortie.ato")
 MAX_PACKAGES_PER_SIDE = 18
+PLAN_VERSION = 3          # bump when planning changes in a way saved, unflown ATOs should pick up
+SUPPORT_TASKS = ("AWACS", "TANKER", "SAR")
 DIMINISH = 7.0
 FIRST_TOT_S, TOT_STEP_S = 2400.0, 420.0
 STRIKE_LIKE = ("STRIKE", "DEAD", "INTERDICTION", "ANTISHIP", "CAS", "SEAD", "RECON")
@@ -145,7 +147,20 @@ def support_info(st: State, packages: List[Package]) -> Dict[str, Any]:
 def generate_ato(st: State, d: Dict[str, Any]) -> Ato:
     turn = st.meta.turn
     packages = plan_side(st, "blue", d, turn) + plan_side(st, "red", d, turn)
-    ato = Ato(id=f"ato-{turn}", turn=turn, packages=packages, support=support_info(st, packages))
+    for p in packages:
+        route.add_join(st, p)
+    cycle_s = st.meta.turn_hours * 3600.0
+    for side in ("blue", "red"):
+        mine = [f for p in packages if p.coalition == side for f in p.flights]
+        last = max([f.waypoints[-1].eta_s or 0.0 for f in mine if f.task not in SUPPORT_TASKS] or [0.0])
+        for f in mine:
+            if f.task in SUPPORT_TASKS:
+                # already on station when the cycle begins (launched last cycle) and stays until
+                # the last tasking of the ATO is down, and at least until the next cycle starts,
+                # when the next cycle's aircraft is on station in its place
+                route.set_support_station(f, 0.0, max(last + 900.0, cycle_s))
+    ato = Ato(id=f"ato-{turn}", turn=turn, version=PLAN_VERSION, packages=packages,
+              support=support_info(st, packages))
     log.info("ATO %s: %d packages", turn, len(packages), extra={"turn": turn})
     return ato
 

@@ -113,3 +113,17 @@ Entries are numbered; **FLAG** marks things that need in-sim verification or lat
 30. **Kneeboards** are PNGs rendered with Pillow and appended to the saved archive under
     `KNEEBOARD/<aircraft type>/IMAGES/` (pydcs's own helper writes a doubled slash in the
     archive path, so it is not used). **FLAG** verify they show in the cockpit.
+31. **Support continuity.** AWACS/tanker/SAR flights are planned with their station time
+    starting at cycle second 0 (negative take-off time = launched last cycle) and ending at
+    max(last landing of the side's ATO + 15 min, end of cycle). Each cycle's aircraft therefore
+    relieves the previous one on station at the cycle boundary. One airframe covers the whole
+    cycle; real relief/refuelling cycles within a cycle are not modelled and DCS AI may leave
+    early on fuel. **FLAG**
+32. **Saved plans carry a planner version** (`Ato.version`, `planner.PLAN_VERSION`). An unflown
+    plan from an older version is re-planned automatically, so fixes reach campaigns in progress.
+33. **JOIN point:** first of 60/45/30/15 % along the lead's leg to INGRESS that is outside known
+    enemy SAM/AAA rings (+5 km) and at least 10 km on the friendly side of any front. Flights
+    that would arrive late leave earlier; the AI is not made to hold there (escorts simply attach
+    to the lead from the JOIN point on).
+34. **Hot start** (`player_start: hot`) applies to all human seats; the mission then opens
+    `mission.hot_startup_minutes` (3) before take-off instead of 10.

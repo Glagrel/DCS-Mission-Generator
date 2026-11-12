@@ -85,14 +85,17 @@ def build_route(st: State, side: str, home: M.Airbase, target: Target, aircraft:
     station = 0.0
     if task in ORBIT_TASKS:
         # support stays up for the whole cycle; fighters hold their station for an hour
-        station = max(1800.0, st.meta.turn_hours * 3600.0 - 1800.0 - tot_s) if task in SUPPORT_ORBITS             else CAP_STATION_S
+        station = max(1800.0, st.meta.turn_hours * 3600.0 - 1800.0 - tot_s) if task in SUPPORT_ORBITS \
+            else CAP_STATION_S
         wps[1].hold_s = station
     _eta(wps, tot_s, anchor="STN-A" if task in ORBIT_TASKS else "TGT", station_s=station)
     return wps
 
 
-def _eta(wps: List[Waypoint], tot_s: float, anchor: str, station_s: float = 0.0) -> None:
-    """Fill eta_s so the anchor waypoint is reached at tot_s (never departing before t=0).
+def _eta(wps: List[Waypoint], tot_s: float, anchor: str, station_s: float = 0.0,
+         allow_negative: bool = False) -> None:
+    """Fill eta_s so the anchor waypoint is reached at tot_s. Flights never depart before t=0
+    unless `allow_negative` (support that was already airborne when the cycle began).
     `station_s` is time spent orbiting between the station points before going home."""
     t, times = 0.0, [0.0]
     for i in range(1, len(wps)):
@@ -103,9 +106,77 @@ def _eta(wps: List[Waypoint], tot_s: float, anchor: str, station_s: float = 0.0)
     if station_s:
         last_stn = max((i for i, w in enumerate(wps) if w.name.startswith("STN")), default=idx)
         times = [ts + (station_s if i > last_stn else 0.0) for i, ts in enumerate(times)]
-    shift = max(0.0, tot_s - times[idx])
+    shift = tot_s - times[idx]
+    if not allow_negative:
+        shift = max(0.0, shift)
     for w, ts in zip(wps, times):
         w.eta_s = round(ts + shift, 0)
+
+
+def set_support_station(f, start_s: float, end_s: float) -> None:
+    """Put an orbiting support flight on station from `start_s` to `end_s` (cycle seconds).
+    start_s = 0 means it is already on station when the cycle begins (it launched during the
+    previous cycle), so its take-off time is negative."""
+    if len(f.waypoints) < 3 or not f.waypoints[1].name.startswith("STN"):
+        return
+    hold = max(600.0, end_s - start_s)
+    f.waypoints[1].hold_s = hold
+    _eta(f.waypoints, start_s, "STN-A", station_s=hold, allow_negative=True)
+
+
+def _friendly(st: State, side: str, pt) -> bool:
+    """Outside known enemy air-defence rings and on our side of every nearby front line."""
+    from ..sim.ground import axis_param
+    for s in st.sam_sites.values():
+        if s.coalition != side and s.role != "ewr" and s.health >= 0.15 and s.known \
+                and geo.dist_km((s.lat, s.lon), pt) < s.range_km + 5:
+            return False
+    for fr in st.fronts.values():
+        t, off = axis_param(fr, pt[0], pt[1])
+        if off > fr.width_km * 3 or not -0.5 <= t <= 1.5:
+            continue
+        margin = 10.0 / max(1.0, geo.dist_km((fr.a.lat, fr.a.lon), (fr.b.lat, fr.b.lon)))
+        if (side == "blue" and t > fr.position - margin) or (side == "red" and t < fr.position + margin):
+            return False
+    return True
+
+
+def add_join(st: State, pkg) -> bool:
+    """Give a multi-flight package a common JOIN point in friendly territory where its elements
+    link up before pushing. Every flight is timed to be there by the lead's push time."""
+    flights = [f for f in pkg.flights if any(w.name == "INGRESS" for w in f.waypoints)
+               and not any(w.name == "JOIN" for w in f.waypoints)]
+    if len(flights) < 2 or pkg.flights[0] not in flights:
+        return False
+    lead = pkg.flights[0]
+    dep, ing = lead.waypoints[0], next(w for w in lead.waypoints if w.name == "INGRESS")
+    pt = None
+    for frac in (0.6, 0.45, 0.3, 0.15):
+        cand = geo.lerp((dep.lat, dep.lon), (ing.lat, ing.lon), frac)
+        if _friendly(st, pkg.coalition, cand):
+            pt = cand
+            break
+    if pt is None:
+        return False
+    push = None
+    for f in flights:
+        i = next(k for k, w in enumerate(f.waypoints) if w.name == "INGRESS")
+        ref = f.waypoints[i]
+        tgt = next(w for w in f.waypoints if w.name == "TGT")
+        tot = tgt.eta_s or 0.0
+        f.waypoints.insert(1, Waypoint(name="JOIN", lat=pt[0], lon=pt[1], alt_m=ref.alt_m,
+                                       speed_kmh=ref.speed_kmh, action="join"))
+        _eta(f.waypoints, tot, "TGT")
+        join = f.waypoints[1]
+        if push is None:
+            push = join.eta_s                      # the lead sets the push time
+        elif (join.eta_s or 0.0) > push:
+            # be at the join by push time: leave earlier and wait there for the lead
+            early = (join.eta_s or 0.0) - push
+            new_dep = max(0.0, (f.waypoints[0].eta_s or 0.0) - early)
+            join.eta_s = new_dep + ((join.eta_s or 0.0) - (f.waypoints[0].eta_s or 0.0))
+            f.waypoints[0].eta_s = new_dep
+    return True
 
 
 def route_length_km(wps: List[Waypoint]) -> float:

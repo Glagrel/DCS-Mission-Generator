@@ -129,6 +129,11 @@ None of these has been run. Fill in **Actual** and **P/F** as you go. Unless sta
 | 9.16 | Kneeboard | any | Open the kneeboard in the cockpit | SORTIE flight card and support pages are present and readable | | |
 | 9.17 | Units | Settings → metric, regenerate | Briefing and kneeboard | Altitudes in m, speeds in km/h, distances in km | | |
 
+| 9.18 | Support on station in the editor | Gulf / A | Open the .miz in the Mission Editor | AWACS and tanker groups (names `S\|flt\|B..`) are placed in the air at their orbits | | |
+| 9.19 | Support stays until all are down | Gulf / A | Fly a long sortie | AWACS/tanker still orbiting when the last package lands | | |
+| 9.20 | Hot start | Settings → start hot, regenerate | Enter the cockpit | Engines running on the ramp/deck; mission clock about 3 min before take-off | | |
+| 9.21 | JOIN point | a tasking with escort or SEAD support | Fly to the JOIN waypoint | It is in friendly territory; package elements pass it around the push time; escort forms on the strikers | | |
+
 ## 8. Campaign continuity
 
 | # | Test | Theater / aircraft / setup | Steps | Expected | Actual | P/F |

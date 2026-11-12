@@ -16,6 +16,7 @@
         <tr><td>Package</td><td>${esc(b.package.id)} (${esc(b.package.mission)})</td></tr>
         <tr><td>Mission starts</td><td>${esc(b.mission_start)} <span class="dim">(the mission opens at your start-up time; earlier events of the cycle are already resolved)</span></td></tr>
         <tr><td>Take-off / time on target</td><td><b>${esc(b.takeoff)}</b> / <b>${esc(b.tot)}</b>${b.target.bullseye ? ' &middot; target bullseye ' + esc(b.target.bullseye) : ''}</td></tr>
+        ${b.join ? `<tr><td>Join / push</td><td><b>${esc(b.join.time)}</b> at the JOIN waypoint (friendly territory): the package links up there and pushes together</td></tr>` : ''}
         <tr><td>Radio</td><td>${freq(f.freq)}</td></tr>
         <tr><td>Loadout</td><td>${f.stores.length ? f.stores.map(esc).join(', ') : '<span class="dim">' + (f.loadout ? esc(f.loadout) : 'no stock loadout known - arm on the ramp') + '</span>'}</td></tr>
         <tr><td>Escort</td><td>${b.escort.length ? b.escort.map(esc).join(', ') : 'none'}</td></tr>

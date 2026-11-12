@@ -115,3 +115,11 @@ Not done yet:
 - Service: pre-launch resolution, events read from client/server/%TEMP%, server mission copy.
 - GUI: co-op and server settings, units toggle, slot table, kneeboard/clock info, per-pilot debrief.
 - 162 tests pass. Still nothing run in DCS.
+
+## Second feedback round
+- Root cause of "no AWACS/tanker in the mission editor": the campaign's saved ATO came from the
+  older planner. Added plan versioning with automatic re-planning of unflown plans.
+- Support flights on station from cycle start until the last tasking lands / next cycle.
+- JOIN waypoint for multi-flight packages; hot-start option; `Stop SORTIE.bat`, restart-on-start.
+- Verified on a copy of the user's campaign database: mission now contains E-3A, KC-135MPRS and
+  the S-3B recovery tanker, airborne at mission start. 171 tests pass.

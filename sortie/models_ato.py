@@ -62,6 +62,7 @@ class Package(BaseModel):
 class Ato(BaseModel):
     id: str                  # "ato-<turn>"
     turn: int
+    version: int = 1         # planner version that produced it (old plans are re-planned)
     packages: List[Package] = Field(default_factory=list)
     player_flight_id: Optional[str] = None
     player_package_id: Optional[str] = None

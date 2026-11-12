@@ -380,3 +380,140 @@ def test_packages_finished_before_launch_are_resolved_first(tmp_path):
     assert any(early.id in line for line in res.briefing["pre_mission"])
     again = svc.generate_mission(cid, with_moose=False)                 # regenerating does not fight it twice
     assert again.briefing["pre_mission"] == res.briefing["pre_mission"]
+
+
+# ---- support on station for the whole ATO, join point, hot start, re-planning --------------------------
+def test_support_on_station_from_cycle_start_until_last_landing(gulf):
+    ato = planner.generate_ato(gulf, D)
+    cycle = gulf.meta.turn_hours * 3600
+    for side in ("blue", "red"):
+        mine = [f for p in ato.packages if p.coalition == side for f in p.flights]
+        last = max(clock.window(f)[1] for f in mine if f.task not in ("AWACS", "TANKER", "SAR"))
+        support = [f for f in mine if f.task in ("AWACS", "TANKER", "SAR")]
+        if side == "blue":
+            assert {"AWACS", "TANKER", "SAR"} <= {f.task for f in support}
+        for f in support:
+            on = f.waypoints[1].eta_s
+            off = clock.station_end(f)
+            assert on == 0 and clock.window(f)[0] < 0            # already up when the cycle begins
+            assert off >= last + 899 and off >= cycle             # stays until everyone is down / next cycle
+            for t0 in (0.0, 1800.0, last, cycle - 1):             # whenever the mission starts, it is on station
+                assert clock.phase(f, t0) == clock.AIRBORNE and clock.air_state(f, t0).on_station
+
+
+def test_support_in_mission_whatever_the_player_time(theaters, tmp_path):
+    st, ato, res, _ = _build(theaters, tmp_path)
+    m = dcs.Mission()
+    m.load_file(res.path)
+    groups = _flight_groups(m)
+    seen = set()
+    for name, v in res.manifest.items():
+        if v["kind"] == "flight" and v["coalition"] == "blue" and v["task"] in ("AWACS", "TANKER"):
+            g = groups[name]
+            assert g.points[0].type == "Turning Point" and g.start_time == 0 and not g.late_activation
+            seen.add(v["task"])
+    assert seen == {"AWACS", "TANKER"}
+
+
+def test_stale_plan_is_replanned_until_flown(tmp_path):
+    svc = Service(Store(str(tmp_path / "s.db")), _settings(tmp_path))
+    loadouts.configure(None)
+    cid = svc.new_campaign(CareerOptions(theater_id="gulf_crisis", squadron_id="77fs", callsign="Rook", seed=3))
+    svc.plan(cid)
+    st = svc.state(cid)
+    st.ato.version = 1                                            # as saved by an older SORTIE
+    for _, f in st.ato.flights():
+        if f.task == "AWACS":
+            f.waypoints[-1].eta_s = 1400.0                        # the old bug: "lands" before the player launches
+    from sortie.state import save_state
+    save_state(svc.store, cid, st)
+    svc.plan(cid)
+    fresh = svc.state(cid).ato
+    assert fresh.version == planner.PLAN_VERSION
+    assert all(clock.window(f)[1] > 20000 for _, f in fresh.flights() if f.task == "AWACS")
+    res = svc.generate_mission(cid, with_moose=False)
+    assert "AWACS" in {v["task"] for v in res.manifest.values() if v["kind"] == "flight"}
+    # an old plan with packages already resolved before launch is still replaced ...
+    st = svc.state(cid)
+    st.ato.version = 1
+    next(f for _, f in st.ato.flights() if not f.is_player).status = "resolved"
+    save_state(svc.store, cid, st)
+    svc.plan(cid)
+    assert svc.state(cid).ato.version == planner.PLAN_VERSION
+    # ... but never once the sortie has been flown in DCS
+    st = svc.state(cid)
+    st.ato.version = 1
+    next(f for _, f in st.ato.flights() if f.is_player).status = "simulated"
+    save_state(svc.store, cid, st)
+    svc.plan(cid)
+    assert svc.state(cid).ato.version == 1
+
+
+def test_hot_start_option(theaters, tmp_path):
+    st, ato, cold, _ = _build(theaters, tmp_path / "c", coop_slots=2)
+    st2, ato2, hot, _ = _build(theaters, tmp_path / "h", coop_slots=2, player_start="hot")
+    assert cold.stats["player_start"] == "cold" and hot.stats["player_start"] == "hot"
+    assert hot.stats["t0_s"] - cold.stats["t0_s"] == 7 * 60        # opens 3 min before take-off instead of 10
+    for res, expected in ((cold, "TakeOffParking"), (hot, "TakeOffParkingHot")):
+        m = dcs.Mission()
+        m.load_file(res.path)
+        groups = _flight_groups(m)
+        for s in res.slots:
+            assert groups[s["group"]].points[0].type == expected
+            assert [u.skill.value for u in groups[s["group"]].units][:2] == ["Client", "Client"]
+
+
+def test_package_join_point(gulf):
+    from sortie.ato import route
+    ato = planner.generate_ato(gulf, D)
+    multi = [p for p in ato.packages if len(p.flights) > 1 and p.mission not in ("CAP", "AWACS", "TANKER", "SAR")]
+    joined = [p for p in multi if any(w.name == "JOIN" for w in p.flights[0].waypoints)]
+    assert joined and len(joined) >= len(multi) // 2
+    for p in joined:
+        pts = set()
+        push = p.flights[0].waypoints[1].eta_s
+        for f in p.flights:
+            names = [w.name for w in f.waypoints]
+            assert names[:3] == ["DEP", "JOIN", "INGRESS"], names
+            j = f.waypoints[1]
+            pts.add((round(j.lat, 4), round(j.lon, 4)))
+            assert j.action == "join" and j.eta_s <= push + 1       # everyone is there by push time
+            assert f.waypoints[0].eta_s >= 0 and j.eta_s > f.waypoints[0].eta_s
+            etas = [w.eta_s for w in f.waypoints]
+            assert etas == sorted(etas)
+        assert len(pts) == 1                                        # one common point for the package
+        j = p.flights[0].waypoints[1]
+        assert route._friendly(gulf, p.coalition, (j.lat, j.lon))    # in friendly territory
+    solo = [p for p in ato.packages if len(p.flights) == 1]
+    assert all(not any(w.name == "JOIN" for w in p.flights[0].waypoints) for p in solo)
+
+
+def test_join_is_never_in_enemy_territory(gulf):
+    from sortie.ato import route
+    sam = gulf.sam_sites["sa10_ba"]
+    assert not route._friendly(gulf, "blue", (sam.lat, sam.lon))
+    f = gulf.fronts["musandam"]
+    assert not route._friendly(gulf, "blue", (f.b.lat, f.b.lon))    # red's end of the front axis
+    assert route._friendly(gulf, "blue", (24.3, 54.6))               # over Al Dhafra
+
+
+def test_escort_task_starts_at_join_and_briefing_mentions_it(theaters, tmp_path):
+    st, ato, res, _ = _build(theaters, tmp_path)
+    pkg, flt = ato.find_flight(ato.player_flight_id)
+    if any(w.name == "JOIN" for w in flt.waypoints):
+        assert res.briefing["join"] and "JOIN" in [w["name"] for w in res.briefing["waypoints"]]
+    m = dcs.Mission()
+    m.load_file(res.path)
+    groups = _flight_groups(m)
+    checked = 0
+    for name, v in res.manifest.items():
+        if v["kind"] == "flight" and v["task"] == "ESCORT" and v["phase"] == "ground":
+            g = groups[name]
+            joins = [p for p in g.points if p.name == "JOIN"]
+            lead_id = ato.find_flight(v["id"])[0].flights[0].id
+            lead_in_mission = budget.gname("flt", lead_id) in groups     # else pydcs's generic escort stays
+            if joins and lead_in_mission:
+                assert "EscortTaskAction" in [type(t).__name__ for t in joins[0].tasks]
+                assert "EscortTaskAction" not in [type(t).__name__ for t in g.points[0].tasks]
+                checked += 1
+    assert checked >= 1

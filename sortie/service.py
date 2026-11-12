@@ -66,6 +66,9 @@ class Service:
         st = st or self.state(cid)
         if st.meta.status != "active":
             return {"assigned": False, "reason": f"campaign is over ({st.meta.status})"}
+        if st.ato is not None and st.ato.version < planner.PLAN_VERSION and self._replannable(st):
+            log.info("re-planning cycle %s: saved ATO is from an older planner", st.meta.turn)
+            st.ato = None                             # an unflown plan from an older version
         if st.ato is None:
             st.ato = planner.generate_ato(st, self.d)
             res = assign.assign_player(st, st.ato, self.d, max(1, self.settings.coop_slots))
@@ -77,7 +80,16 @@ class Service:
         from .mission import clock
         slot_list = (st.sortie.summary.get("slots") if st.sortie else None) or []
         return briefing.build(st, st.ato, st.ato.support.get("player_reason", ""),
-                              t0=clock.mission_t0(st.ato, self.d), units=self.settings.units, slots=slot_list)
+                              t0=clock.mission_t0(st.ato, self.d, self.settings.player_start == "hot"),
+                              units=self.settings.units, slots=slot_list)
+
+    @staticmethod
+    def _replannable(st: State) -> bool:
+        """A plan from an older planner may be replaced as long as the sortie has not been flown.
+        (Packages an older version already resolved before launch keep their effects.)"""
+        if st.sortie and st.sortie.state not in ("planned", "built"):
+            return False
+        return not any(f.status == "simulated" for _, f in st.ato.flights())
 
     def generate_mission(self, cid: str, out_dir: Optional[Path] = None,
                          with_moose: Optional[bool] = None) -> builder.BuildResult:
@@ -111,7 +123,7 @@ class Service:
         ato = st.ato
         if not ato or not ato.player_flight_id:
             return
-        t0 = clock.mission_t0(ato, self.d)
+        t0 = clock.mission_t0(ato, self.d, self.settings.player_start == "hot")
         rng = st.rng("airwar-pre")
         lines = list(ato.support.get("pre_mission", []))
         for pkg in sorted(ato.packages, key=lambda p: (p.tot_s, p.id)):

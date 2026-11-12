@@ -102,7 +102,8 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
     try:
         m = dcs.Mission(terrain.new_terrain(st.meta.terrain))
         _setup_coalitions(m, st)
-        t0 = clock.mission_t0(ato, d)               # fast-forward: start just before the player's start-up
+        hot = settings.player_start == "hot"
+        t0 = clock.mission_t0(ato, d, hot)          # fast-forward: start just before the player's start-up
         m.start_time = (st.now + timedelta(seconds=t0)).replace(tzinfo=timezone.utc)
         _setup_weather(m, st.meta.weather)
         warehouses.apply_to_mission(m, st, logistics)
@@ -128,7 +129,7 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
             warnings.append(f"{missing} of {extra} extra co-op seats could not be placed: no friendly flight "
                             "on the ground this cycle flies an aircraft from the co-op module list.")
         skills = {"friendly": diff["friendly_skill"], "enemy": diff["enemy_skill"]}
-        fb = FlightBuilder(m, st, ato, sel, man, ships, seats, multiplayer, skills, warnings, t0, d)
+        fb = FlightBuilder(m, st, ato, sel, man, ships, seats, multiplayer, skills, warnings, t0, d, hot)
         fb.build_all()
         moose_on = scripts.MOOSE_FILE.is_file() if with_moose is None else (with_moose and scripts.MOOSE_FILE.is_file())
         for entry in fb.carrier_support:            # MOOSE's RESCUEHELO spawns from a late-activated template
@@ -189,6 +190,7 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
              "naval_groups": len(sel.naval_groups), "t0_s": round(t0),
              "start_time": (st.now + timedelta(seconds=t0)).strftime("%H:%M"),
              "human_seats": sum(r["seats"] for r in slot_list), "multiplayer": multiplayer,
+             "player_start": "hot" if hot else "cold",
              "kneeboard_pages": len(kb_pages),
              "ground_groups": len(sel.ground_units) + len(sel.sam_sites) + len(sel.routes),
              "static_groups": sum(1 for v in man.values() if v["kind"] == "supply_node"),

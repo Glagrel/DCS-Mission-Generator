@@ -39,10 +39,10 @@ def main_task(aircraft: str, sortie_task: str):
 class FlightBuilder:
     def __init__(self, m, st: State, ato: Ato, sel: Selection, man: Manifest, ships: Dict[str, Any],
                  seats: Dict[str, List[int]], multiplayer: bool, skills: Dict[str, str], warnings: List[str],
-                 t0: float, d: Dict[str, Any]) -> None:
+                 t0: float, d: Dict[str, Any], hot: bool = False) -> None:
         self.m, self.st, self.ato, self.sel, self.man = m, st, ato, sel, man
         self.ships, self.seats, self.multiplayer = ships, seats, multiplayer
-        self.skills, self.warnings, self.t0, self.d = skills, warnings, t0, d
+        self.skills, self.warnings, self.t0, self.d, self.hot = skills, warnings, t0, d, hot
         self.groups: Dict[str, Any] = {}          # flight id -> pydcs group
         self.carrier_support: List[Dict[str, Any]] = []
         self.parked: Dict[str, List[Any]] = {}    # base id -> [(take-off time, group)] for stand re-use
@@ -78,7 +78,7 @@ class FlightBuilder:
         group, first, delay = None, 1, 0.0
         boat = self._carrier_of(pkg)
         if ph == clock.GROUND:
-            start = StartType.Cold if humans else StartType.Warm
+            start = StartType.Cold if (humans and not self.hot) else StartType.Warm
             delay = 0.0 if humans else clock.start_delay(f, t0, self.d)
 
             def make(how=None):
@@ -285,7 +285,8 @@ class FlightBuilder:
                 # replace pydcs's generic auto-escort with one bound to our package lead
                 group.points[0].tasks = [t for t in group.points[0].tasks
                                          if not isinstance(t, task.EscortTaskAction)]
-                group.points[0].tasks.append(task.EscortTaskAction(
+                # escorts pick the package up at the JOIN point when there is one
+                (marks.get("join") or group.points[0]).tasks.append(task.EscortTaskAction(
                     group_id=lead.id, engagement_max_dist=60000, lastwpt=max(2, len(lead.points) - 1),
                     targets=[task.Targets.All.Air.Planes.Fighters, task.Targets.All.Air.Planes.MultiroleFighters],
                     position={"x": -300, "y": 600, "z": -300}))

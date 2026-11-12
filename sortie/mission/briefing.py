@@ -10,6 +10,8 @@ from ..models_ato import Ato, Flight
 from ..state import State
 from . import loadouts
 
+JOIN_NOTE = "JOIN is the package rendezvous in friendly territory: link up there and push at the JOIN time."
+
 OBJECTIVES = {
     "CAP": "Hold the CAP station and engage hostile aircraft entering the area.",
     "INTERCEPT": "Scramble and intercept inbound raids as directed.",
@@ -88,6 +90,8 @@ def build(st: State, ato: Ato, reason: str, t0: float = 0.0, units: str = "imper
         "sead": [f.callsign for f in pkg.flights if f.task == "SEAD" and f.id != flt.id],
         "weather": w, "weather_text": _weather(w, units), "slots": slots or [],
         "pre_mission": ato.support.get("pre_mission", []),
+        "join": next(({"time": w["time"], "lat": w["lat"], "lon": w["lon"]} for w in card["waypoints"]
+                      if w["name"] == "JOIN"), None),
         "base_status": {"fuel_jet_t": round(base.fuel.jet, 1), "fuel_avgas_t": round(base.fuel.avgas, 1),
                         "munitions": round(base.munition_level, 2), "runway": round(base.runway_health, 2)},
     }
@@ -147,6 +151,8 @@ def text(st: State, b: Dict[str, Any]) -> str:
     L.append("ROUTE:")
     for i, w in enumerate(b["waypoints"]):
         L.append(f"  {i} {w['name']:<8} {w['time']}  {w['alt']:>9}  {w['speed']:>8}  hdg {w['hdg']}  {w['leg']}")
+    if b.get("join"):
+        L.append("  " + JOIN_NOTE + f" Push {b['join']['time']}.")
     L.append("")
     th = b["threats"]
     if th["sams"]:

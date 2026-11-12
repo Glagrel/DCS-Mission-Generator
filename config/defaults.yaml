@@ -31,6 +31,7 @@ ground:
   attrition: 0.04
 mission:
   startup_minutes: 10             # mission clock starts this long before the player's take-off time
+  hot_startup_minutes: 3          # ... when human aircraft start hot (engines running)
   taxi_minutes: 5                 # AI on the ramp start up this long before their own take-off time
 coop:
   player_slots: 1                 # 1 = single player (slot is "Player"); >1 = Client slots

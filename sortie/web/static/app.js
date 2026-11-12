@@ -150,6 +150,8 @@ SORTIE.pages.settings = async function () {
         <table style="margin-top:8px"><tr><th>Profile</th><th>AI aircraft</th><th>Ground groups</th><th>Naval</th><th>Bubble km</th><th>Spawn/despawn km</th></tr>
         ${Object.keys(prof).map((k) => `<tr class="${k === status.profile ? 'me' : ''}"><td>${k}</td><td>${prof[k].max_air}</td><td>${prof[k].max_ground_groups}</td><td>${prof[k].max_naval_groups}</td><td>${prof[k].bubble_km}</td><td>${prof[k].spawn_km} / ${prof[k].despawn_km}</td></tr>`).join('')}</table>
         <p class="dim">Numbers are starting guesses; tune them in config/defaults.yaml.</p>
+        <label>Your aircraft (and co-op seats) start</label>
+        <select id="st-start"><option value="cold" ${s.player_start === 'cold' ? 'selected' : ''}>cold and dark (mission opens 10 min before take-off)</option><option value="hot" ${s.player_start === 'hot' ? 'selected' : ''}>hot, engines running (mission opens 3 min before take-off)</option></select>
         <label>Units shown in briefings, kneeboards and this GUI</label>
         <select id="st-units">${['imperial', 'metric'].map((x) => `<option ${x === s.units ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
       <div class="panel"><h2>Co-op / multiplayer</h2>
@@ -187,7 +189,7 @@ SORTIE.pages.settings = async function () {
       await SORTIE.api('PUT', '/api/settings', {
         saved_games: $('#st-sg').value.trim(), dcs_install: $('#st-inst').value.trim(), output_dir: $('#st-out').value.trim(),
         profile: $('#st-profile').value, coop_slots: parseInt($('#st-coop').value, 10) || 1,
-        coop_extra_slots: parseInt($('#st-extra').value, 10) || 0, units: $('#st-units').value,
+        coop_extra_slots: parseInt($('#st-extra').value, 10) || 0, units: $('#st-units').value, player_start: $('#st-start').value,
         coop_modules: $('#st-coopall').checked ? null : Array.from(document.querySelectorAll('.st-cmod')).filter((b) => b.checked).map((b) => b.value),
         save_to_server: $('#st-srvon').checked, server_saved_games: $('#st-srv').value.trim(),
         atc_enabled: $('#st-atc').checked, voice: $('#st-voice').value, srs_path: $('#st-srs').value,
