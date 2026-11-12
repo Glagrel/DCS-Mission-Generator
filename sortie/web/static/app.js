@@ -196,9 +196,10 @@ SORTIE.voiceRows = function (v) {
 
 // ---- Settings --------------------------------------------------------------------------------
 SORTIE.pages.settings = async function () {
-  const [s, status, mods, san, vc] = await Promise.all([
+  const [s, status, mods, san, vc, acmods, addons] = await Promise.all([
     SORTIE.api('GET', '/api/settings'), SORTIE.api('GET', '/api/status'), SORTIE.api('GET', '/api/modules'),
-    SORTIE.api('GET', '/api/desanitize'), SORTIE.api('GET', '/api/voice')]);
+    SORTIE.api('GET', '/api/desanitize'), SORTIE.api('GET', '/api/voice'), SORTIE.api('GET', '/api/mods'),
+    SORTIE.api('GET', '/api/addons')]);
   const prof = status.profiles;
   $('#tab-settings').innerHTML = `
     <div class="cols2"><div>
@@ -246,13 +247,25 @@ SORTIE.pages.settings = async function () {
           <div><label>Coalition</label><select id="st-vside"><option value="2">blue</option><option value="1">red</option></select></div>
           <div style="align-self:flex-end"><button id="st-vtest" ${vc.exe ? '' : 'disabled'}>Test voice through SRS</button></div></div>
         <div id="st-vout"></div></div>
-    </div><div class="panel"><h2>Owned modules</h2>
+      <div class="panel"><h2>Carrier decks and JTAC</h2>
+        <label><input type="checkbox" id="st-deck" ${s.deck_statics ? 'checked' : ''}> Park the air wing's idle aircraft on carrier and LHA decks (statics)</label>
+        <label>At most this many per ship (an LHA takes 4 at most)</label><input type="number" id="st-deckmax" min="0" max="20" value="${s.deck_statics_max}">
+        <p class="dim">Placed in the mission from the ship's own parking table: only spots that are free at mission start, never on or in front of the catapults or the landing area, and never the spots needed by the aircraft that launch from or recover to that deck during the mission (those plus 4 spare spots are always kept free).</p>
+        <label><input type="checkbox" id="st-jtac" ${s.jtac ? 'checked' : ''}> Ground JTAC with your coalition's CAS and interdiction packages (DCS 9-line, its own frequency and laser code in the briefing)</label>
+        <label><input type="checkbox" id="st-autolase" ${s.jtac_autolase ? 'checked' : ''}> JTAC finds, smokes and lases targets by itself (MOOSE AUTOLASE)</label></div>
+      <div class="panel"><h2>Mod aircraft</h2>
+        <p class="dim">Community mods found in <span class="path">Saved Games\\Mods\\aircraft</span>. Switched on, they get their own squadrons in new careers and show up under Owned modules. A mod switched off later is flown as its base-game stand-in.</p>
+        <table>${acmods.map((m) => `<tr><td><label style="margin:0;color:var(--text)"><input type="checkbox" class="st-acmod" value="${esc(m.key)}" ${m.enabled ? 'checked' : ''} ${m.installed ? '' : 'disabled'}> ${esc(m.name)}</label></td>
+          <td>${m.installed ? '<span class="ok">installed</span>' : '<span class="dim">not installed</span>'}</td><td class="dim">${esc(m.note)}</td></tr>`).join('')}</table></div>
+    </div><div><div class="panel" id="addons-panel"><h2>Community mission scripts</h2>${SORTIE.addonRows(addons)}</div>
+    <div class="panel"><h2>Owned modules</h2>
       <p class="dim">Tick the aircraft you own. Careers, transfers and reassignments only ever use ticked modules.</p>
       <div class="row"><button id="st-all">All</button><button id="st-none">None</button></div>
       <div class="checks" style="margin-top:8px">${mods.map((m) => `<label><input type="checkbox" class="st-mod" value="${esc(m.id)}" ${m.owned ? 'checked' : ''}> ${esc(m.id)} <span class="dim">${m.year}</span></label>`).join('')}</div>
-    </div></div>
+    </div></div></div>
     <p><button class="primary" id="st-save">Save settings</button></p>`;
   SORTIE.bindSanitize($('#san-panel'), san, () => SORTIE.pages.settings());
+  SORTIE.bindAddons($('#addons-panel'));
   $('#st-vtest').onclick = async () => {
     const b = $('#st-vtest'), out = $('#st-vout');
     b.disabled = true; out.innerHTML = '<p class="dim">Speaking (takes a few seconds)...</p>';
@@ -277,10 +290,70 @@ SORTIE.pages.settings = async function () {
         save_to_server: $('#st-srvon').checked, server_saved_games: $('#st-srv').value.trim(),
         atc_enabled: $('#st-atc').checked, voice: $('#st-voice').value, srs_path: $('#st-srs').value,
         srs_port: parseInt($('#st-srsport').value, 10) || 5002, piper_voice: $('#st-piper').value,
-        google_credentials: $('#st-google').value, owned_modules: boxes().filter((b) => b.checked).map((b) => b.value) });
+        google_credentials: $('#st-google').value, owned_modules: boxes().filter((b) => b.checked).map((b) => b.value),
+        deck_statics: $('#st-deck').checked, deck_statics_max: parseInt($('#st-deckmax').value, 10) || 0,
+        jtac: $('#st-jtac').checked, jtac_autolase: $('#st-autolase').checked,
+        mods: Object.fromEntries(Array.from(document.querySelectorAll('.st-acmod')).map((b) => [b.value, b.checked])) });
       SORTIE.notice('Settings saved.', 'good'); SORTIE.pages.settings();
     } catch (e) { SORTIE.notice(e.message, 'err'); }
   };
+};
+
+// ---- Community scripts (Splash Damage, Skynet, Hound, Growler) ---------------------------------
+SORTIE.addonField = function (key, f) {
+  const id = `ad-${key}-${f.key}`, tip = esc(f.help || '');
+  const changed = JSON.stringify(f.value) !== JSON.stringify(f.default);
+  const lab = `<span title="${tip}">${esc(f.label)}</span>${changed ? ' <span class="warn" title="changed from the default (' + esc(String(f.default)) + ')">&#9679;</span>' : ''}`;
+  const data = `class="ad-f" data-addon="${key}" data-key="${esc(f.key)}" data-type="${f.type}" id="${id}"`;
+  if (f.type === 'bool') return `<label class="ad-row ad-check"><input type="checkbox" ${data} ${f.value ? 'checked' : ''}> ${lab}</label>`;
+  if (f.type === 'choice') return `<div class="ad-row"><label for="${id}">${lab}</label><select ${data}>${f.choices.map((c) => `<option ${c === f.value ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>`;
+  const num = ['int', 'float', 'number'].includes(f.type);
+  const lim = (f.min !== undefined ? ` min="${f.min}"` : '') + (f.max !== undefined ? ` max="${f.max}"` : '');
+  return `<div class="ad-row"><label for="${id}">${lab}</label><input type="${num ? 'number' : 'text'}"${num ? ' step="any"' : ''}${lim} ${data} value="${esc(String(f.value))}"></div>`;
+};
+
+SORTIE.addonRows = function (list) {
+  const fetchKeys = { splash: ['splash'], skynet: ['mist', 'skynet'], hound: ['hound'] };
+  return list.map((a) => {
+    const sections = {};
+    a.fields.forEach((f) => { (sections[f.section] = sections[f.section] || []).push(f); });
+    const body = Object.keys(sections).map((sec) => `<details class="ad-sec"><summary>${esc(sec)} <span class="dim">(${sections[sec].length})</span></summary>${sections[sec].map((f) => SORTIE.addonField(a.key, f)).join('')}</details>`).join('');
+    const missing = a.available ? '' : (fetchKeys[a.key]
+      ? `<p><button class="ad-fetch" data-keys="${fetchKeys[a.key].join(',')}">Download ${esc(a.missing.join(', '))}</button></p>`
+      : `<p class="warn">Missing ${esc(a.missing.map((m) => 'vendor\\addons\\' + m).join(', '))}.</p>`);
+    return `<div class="ad-box" data-addon="${a.key}">
+      <label class="ad-title"><input type="checkbox" class="ad-on" data-addon="${a.key}" ${a.enabled ? 'checked' : ''} ${a.available ? '' : 'disabled'}> <b>${esc(a.name)}</b>
+        ${a.available ? '' : '<span class="warn">script not installed</span>'}</label>
+      <p class="dim">${esc(a.about)}<br>Source: ${esc(a.source)}</p>${missing}
+      ${a.fields.length ? `<details><summary>Settings${a.changed ? ` <span class="warn">(${a.changed} changed)</span>` : ''}</summary>${body}
+        <div class="row" style="margin-top:8px"><button class="ad-save primary" data-addon="${a.key}">Save ${esc(a.name)} settings</button><button class="ad-reset" data-addon="${a.key}">Reset to defaults</button></div></details>` : ''}
+    </div>`;
+  }).join('') + `<p class="dim">Scripts load in this order: MOOSE, MIST, SORTIE, Splash Damage, Skynet, Hound, then SORTIE's set-up of them. Skynet and Hound run side by side (Hound locates the radars Skynet turns on); AI EA-18G/EA-6B flights jam through Skynet's own jammer.</p>`;
+};
+
+SORTIE.bindAddons = function (panel) {
+  const redraw = (list) => { panel.innerHTML = '<h2>Community mission scripts</h2>' + SORTIE.addonRows(list); SORTIE.bindAddons(panel); };
+  const put = async (key, body, msg) => {
+    try { redraw(await SORTIE.api('PUT', '/api/addons/' + key, body)); SORTIE.notice(msg, 'good'); }
+    catch (e) { SORTIE.notice(e.message, 'err'); }
+  };
+  panel.querySelectorAll('.ad-on').forEach((b) => { b.onchange = () => put(b.dataset.addon, { enabled: b.checked }, 'Saved.'); });
+  panel.querySelectorAll('.ad-save').forEach((b) => { b.onclick = () => {
+    const params = {};
+    panel.querySelectorAll(`.ad-f[data-addon="${b.dataset.addon}"]`).forEach((el) => {
+      params[el.dataset.key] = el.dataset.type === 'bool' ? el.checked
+        : (['int', 'float', 'number'].includes(el.dataset.type) ? parseFloat(el.value) : el.value);
+    });
+    put(b.dataset.addon, { params }, 'Saved.');
+  }; });
+  panel.querySelectorAll('.ad-reset').forEach((b) => { b.onclick = () => put(b.dataset.addon, { reset: true }, 'Back to the script defaults.'); });
+  panel.querySelectorAll('.ad-fetch').forEach((b) => { b.onclick = async () => {
+    b.disabled = true; b.textContent = 'Downloading...';
+    try {
+      const r = await SORTIE.api('POST', '/api/addons/fetch', { keys: b.dataset.keys.split(',') });
+      redraw(r.addons); SORTIE.notice(r.errors.length ? r.errors.join('\n') : 'Downloaded.', r.errors.length ? 'err' : 'good');
+    } catch (e) { SORTIE.notice(e.message, 'err'); b.disabled = false; }
+  }; });
 };
 
 SORTIE.start = async function () {

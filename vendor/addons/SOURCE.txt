@@ -1,0 +1,4 @@
+Splash_Damage.lua	source: https://raw.githubusercontent.com/stephenpostlethwaite/DCSSplashDamageScript/master/Splash_Damage_3.4.7_Standard.lua	retrieved: 2026-11-12T14:08:48.330885+00:00	bytes: 499529
+mist.lua	source: https://raw.githubusercontent.com/walder/Skynet-IADS/master/demo-missions/mist_4_5_107.lua	retrieved: 2026-11-12T14:08:48.576296+00:00	bytes: 312747
+skynet-iads-compiled.lua	source: https://raw.githubusercontent.com/walder/Skynet-IADS/master/demo-missions/skynet-iads-compiled.lua	retrieved: 2026-11-12T14:08:48.824975+00:00	bytes: 116802
+HoundElint.lua	source: https://raw.githubusercontent.com/uriba107/dcs-hound/main/include/HoundElint.lua	retrieved: 2026-11-12T14:08:49.101490+00:00	bytes: 425941

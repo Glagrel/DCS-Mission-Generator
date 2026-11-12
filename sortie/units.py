@@ -70,7 +70,39 @@ def year_of(type_id: str) -> int:
     for tpl in sam_templates().values():
         if type_id in tpl["units"]:
             return tpl["year"]
+    from .mods import SPEC_OF_TYPE
+    if type_id in SPEC_OF_TYPE:
+        return SPEC_OF_TYPE[type_id].year
     return DEFAULT_YEAR
+
+
+def weapon_label(clsid: str) -> str:
+    """Weapon name for a store id: pydcs's name, else the id made readable. Mod stores (the CJS
+    Super Hornet's "{SUPERHORNET_PYLON_02_OB_MK_1X_GBU-12}") are unknown to pydcs, but their ids
+    spell the weapon out: "superhornet pylon 02 ob mk 1 x gbu-12"."""
+    from dcs import weapons_data
+    w = weapons_data.weapon_ids.get(clsid or "")
+    if w:
+        return str(w["name"])
+    import re
+    s = (clsid or "").strip("{}").replace("_", " ")
+    return re.sub(r"(?<![\w-])(\d+)x\b", r"\1 x", s, flags=re.I).lower()
+
+
+def weapon_display(clsid: str):
+    """(count, short name) for briefings: "{SUPERHORNET_PYLON_02_OB_MK_1X_GBU-12}" -> (1, "GBU-12")."""
+    import re
+    label = weapon_label(clsid)
+    tok = label.split()
+    if len(tok) < 4 or tok[0] not in ("superhornet", "growler") or tok[1] != "pylon":
+        return 1, label
+    tok = tok[3:]                                       # drop "<mod> pylon <station>"
+    for i in range(len(tok) - 1):                       # "... bru41 6 x bdu-33" -> 6, BDU-33
+        if tok[i].isdigit() and tok[i + 1] == "x" and i + 2 < len(tok):
+            return int(tok[i]), " ".join(tok[i + 2:]).upper()
+    while len(tok) > 1 and re.fullmatch(r"[a-z]{2}", tok[0]):   # station codes: ob, mb, mk, ft, cn ...
+        tok = tok[1:]
+    return 1, " ".join(tok).upper()
 
 
 def in_era(type_id: str, year: int, era_kind: str = "modern") -> bool:

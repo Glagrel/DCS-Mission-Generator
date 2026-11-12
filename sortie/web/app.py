@@ -66,6 +66,21 @@ class SettingsPatch(BaseModel):
     srs_port: Optional[int] = None
     piper_voice: Optional[str] = None
     google_credentials: Optional[str] = None
+    mods: Optional[Dict[str, bool]] = None
+    deck_statics: Optional[bool] = None
+    deck_statics_max: Optional[int] = None
+    jtac: Optional[bool] = None
+    jtac_autolase: Optional[bool] = None
+
+
+class AddonPatch(BaseModel):
+    enabled: Optional[bool] = None
+    params: Optional[Dict[str, Any]] = None
+    reset: bool = False                 # back to the script's own defaults
+
+
+class AddonFetch(BaseModel):
+    keys: Optional[List[str]] = None
 
 
 def create_app(settings: Optional[config.Settings] = None, settings_file: Path = config.SETTINGS_FILE,
@@ -146,6 +161,13 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
             bad = [m for m in data["owned_modules"] if m not in units.flyable_modules()]
             if bad:
                 raise HTTPException(400, f"not flyable modules: {bad}")
+        if data.get("mods") is not None:
+            from .. import mods as _mods
+            bad = [k for k in data["mods"] if k not in _mods.MODS]
+            if bad:
+                raise HTTPException(400, f"unknown mods: {bad}")
+        if "deck_statics_max" in data and not 0 <= int(data["deck_statics_max"]) <= 20:
+            raise HTTPException(400, "deck_statics_max must be 0..20")
         for k in ("saved_games", "dcs_install", "output_dir", "server_saved_games"):
             if k in data and data[k] == "":
                 data[k] = None                           # empty string = back to auto-detect
@@ -155,6 +177,54 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
         from ..mission import loadouts
         loadouts.configure_from_settings(new)
         return new.model_dump()
+
+    # -- mods and community scripts ---------------------------------------------------------
+    @app.get("/api/mods")
+    def mod_status() -> List[Dict[str, Any]]:
+        from .. import mods as _mods
+        return _mods.status(svc.settings)
+
+    @app.get("/api/addons")
+    def addon_status() -> List[Dict[str, Any]]:
+        from .. import addons as _addons
+        return _addons.status(svc.settings)
+
+    @app.put("/api/addons/{key}")
+    def addon_put(key: str, patch: AddonPatch) -> List[Dict[str, Any]]:
+        from .. import addons as _addons
+        if key not in _addons.INFO or key in _addons.SHELVED:
+            raise HTTPException(404, f"unknown add-on {key}")
+        all_ = dict(svc.settings.addons or {})
+        cur = dict(all_.get(key) or {})
+        if patch.enabled is not None:
+            cur["enabled"] = bool(patch.enabled)
+        if patch.reset:
+            cur["params"] = {}
+        elif patch.params is not None:
+            cur["params"] = {**(cur.get("params") or {}), **_addons.clean_params(key, patch.params)}
+        all_[key] = cur
+        new = svc.settings.model_copy(update={"addons": all_})
+        config.save_settings(new, settings_file)
+        svc.settings = new
+        return _addons.status(new)
+
+    @app.post("/api/addons/fetch")
+    def addon_fetch(req: AddonFetch) -> Dict[str, Any]:
+        """Download the GitHub-hosted add-on scripts into vendor/addons (tools/fetch_addons.py)."""
+        import importlib.util
+        from .. import addons as _addons
+        spec = importlib.util.spec_from_file_location("fetch_addons", paths.PROJECT_ROOT / "tools" / "fetch_addons.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        errors = []
+        for k in (req.keys or list(mod.FILES)):
+            if k not in mod.FILES:
+                continue
+            try:
+                mod.fetch([k])
+            except SystemExit as exc:
+                errors.append(str(exc))
+        return {"errors": errors, "addons": _addons.status(svc.settings)}
 
     @app.get("/api/desanitize")
     def desanitize_status() -> List[Dict[str, Any]]:

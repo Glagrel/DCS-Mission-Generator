@@ -14,7 +14,8 @@ LUA_DIR = paths.PROJECT_ROOT / "sortie" / "lua"
 MOOSE_FILE = paths.PROJECT_ROOT / "vendor" / "moose" / "Moose_.lua"
 # load order matters: json -> core -> the rest
 CORE_SCRIPTS = ["sortie_json.lua", "sortie_core.lua", "sortie_events.lua", "sortie_warehouse.lua",
-                "sortie_carrier.lua", "sortie_spawn.lua"]
+                "sortie_carrier.lua", "sortie_deck.lua", "sortie_jtac.lua", "sortie_spawn.lua"]
+ADDON_SETUP = "sortie_addons.lua"
 ATC_SCRIPTS = ["sortie_atc.lua"]
 
 
@@ -65,15 +66,23 @@ def script_list(atc_enabled: bool, with_moose: Optional[bool] = None) -> List[Pa
     return files
 
 
-def attach(m, cfg: Dict[str, Any], atc_enabled: bool, with_moose: Optional[bool] = None) -> List[str]:
-    """Add one MISSION START trigger running DO SCRIPT FILE for each script, in order.
+def attach(m, cfg: Dict[str, Any], atc_enabled: bool, with_moose: Optional[bool] = None,
+           extra: Optional[Dict[str, Any]] = None) -> List[str]:
+    """Add one MISSION START trigger running DO SCRIPT FILE for each script, in order, and a
+    one-shot trigger a few seconds in for scripts that must load late (`extra['delayed']`).
+
+    Order: MOOSE, add-on libraries others need (MIST), SORTIE config, SORTIE core scripts,
+    ATC, then the community add-ons (Splash Damage, Skynet, Hound) and SORTIE's set-up of them.
     Returns the embedded file names."""
+    extra = extra or {}
     tmp = Path(tempfile.mkdtemp(prefix="sortie_cfg_"))
     cfg_file = tmp / "sortie_config.lua"
     cfg_file.write_text(config_lua(cfg), encoding="utf-8")
     files = script_list(atc_enabled, with_moose)
-    order = [f for f in files if f.name == MOOSE_FILE.name] + [cfg_file] + \
-            [f for f in files if f.name != MOOSE_FILE.name]
+    after = list(extra.get("after") or [])
+    order = [f for f in files if f.name == MOOSE_FILE.name] + list(extra.get("before") or []) + [cfg_file] +             [f for f in files if f.name != MOOSE_FILE.name] + after
+    if {"skynet", "hound"} & set(cfg.get("addons") or {}):
+        order.append(LUA_DIR / ADDON_SETUP)
     trig = triggers.TriggerStart(comment="SORTIE load scripts")
     names = []
     for f in order:
@@ -82,4 +91,13 @@ def attach(m, cfg: Dict[str, Any], atc_enabled: bool, with_moose: Optional[bool]
         trig.add_action(action.DoScriptFile(m.map_resource.add_resource_file(str(f))))
         names.append(f.name)
     m.triggerrules.triggers.append(trig)
+    delayed = [f for f in (extra.get("delayed") or []) if f.is_file()]
+    if delayed:
+        from dcs import condition
+        late = triggers.TriggerOnce(comment="SORTIE late scripts")
+        late.add_condition(condition.TimeAfter(int(extra.get("delay_s", 5))))
+        for f in delayed:
+            late.add_action(action.DoScriptFile(m.map_resource.add_resource_file(str(f))))
+            names.append(f.name)
+        m.triggerrules.triggers.append(late)
     return names

@@ -155,3 +155,17 @@ None of these has been run. Fill in **Actual** and **P/F** as you go. Unless sta
 - [ ] F-16C / F/A-18C: your wingmen show as team members (HSD / SA page) and the other Link 16
       flights of the package as donors; STNs match the kneeboard. A-10C II: SADL the same way.
 - [ ] AI SEAD/DEAD flights do not engage fighters before the IP; AI flights return on bingo.
+
+## Mods, deck dressing, JTAC, community scripts
+
+- [ ] Both the CVN and the LHA have a plane guard flying (UH-60L in navy grey with the mod on).
+- [ ] Deck statics sit on the deck (not in the sea or floating), on the starboard side, and move
+      with the ship. AI launch from every catapult they used before and recover and taxi to a spot.
+- [ ] The LHA's Harriers and helicopters still launch and land with its statics in place.
+- [ ] JTAC answers on the briefed frequency (F10/comms -> JTAC), gives a 9-line and lases on the
+      briefed code; with AUTOLASE, red smoke on targets and F10 -> AUTOLASE status.
+- [ ] F/A-18E/F and EA-18G spawn with the mod's loadouts (stores visible on the right stations).
+- [ ] Splash Damage: bigger explosions; a changed option (e.g. overall scaling) has an effect.
+- [ ] Skynet: enemy SAMs stay dark until you are close, then go live; `dcs.log` shows no Skynet errors.
+- [ ] Hound: F10 map shows located radars; pre-briefed sites are there from the start.
+- [ ] AI EA-18G flights with Skynet on: jammer events in the feed, enemy sites lose locks.

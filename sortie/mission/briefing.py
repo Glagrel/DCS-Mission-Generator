@@ -219,6 +219,8 @@ def text(st: State, b: Dict[str, Any]) -> str:
         L.append(f"AWACS: {a['callsign']} {a['aircraft']} {_freq(a['freq'])}")
     if b.get("gci"):
         L.append(f"GCI: {_freq(b['gci']['freq'])}")
+    from .jtac import briefing_lines
+    L += briefing_lines(b.get("jtacs") or [])
     if b.get("nav_lines"):
         L.append(f"HOME {b['nav'].get('name', '')}: " + "; ".join(b["nav_lines"]))
     if b["weather_text"]:

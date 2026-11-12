@@ -39,6 +39,14 @@ coalition = {
 Group = { Category = { AIRPLANE = 0, HELICOPTER = 1, GROUND = 2, SHIP = 3 },
           getByName = function(n) return MOCK.groups[n] end }
 Object = { Category = { UNIT = 1, WEAPON = 2, STATIC = 3, BASE = 4, SCENERY = 5 } }
+MOCK.statics = {}
+coalition.addStaticObject = function(country, t) MOCK.statics[#MOCK.statics + 1] = t; return t end
+Unit = { getByName = function(n)
+  for _, g in pairs(MOCK.groups) do
+    for _, u in ipairs(g.units) do if u.name == n and g.exists then return u end end
+  end
+  return nil
+end }
 Airbase = { getByName = function(n) return MOCK.airbases[n] end }
 trigger = { action = {
   outTextForGroup = function(id, text, secs) MOCK.texts[#MOCK.texts + 1] = { group = id, text = text } end,
@@ -75,6 +83,15 @@ function MOCK.unit(t)
   function u:inAir() return self.air end
   function u:getVelocity() return { x = t.vx or 0, y = 0, z = t.vz or 0 } end
   function u:getFuel() return 0.8 end
+  function u:isExist() return true end
+  function u:getID() return t.id or 99 end
+  function u:getCountry() return t.country or 2 end
+  -- heading 0 = facing +x (north); +z is to the right (starboard)
+  function u:getPosition()
+    local h = t.heading or 0
+    return { p = { x = self.x, y = self.alt, z = self.z }, x = { x = math.cos(h), y = 0, z = math.sin(h) },
+             y = { x = 0, y = 1, z = 0 }, z = { x = -math.sin(h), y = 0, z = math.cos(h) } }
+  end
   function u:getLife() return 100 end
   function u:getAmmo()
     local out = {}
@@ -117,6 +134,13 @@ function MOCK.airbase(name, weapons, liquids, unlimited)
   function ab:getName() return self.name end
   function ab:getCoalition() return self.c end
   function ab:getPoint() return { x = self.x or 0, y = 0, z = self.z or 0 } end
+  function ab:getParking(available)
+    local out = {}
+    for _, s in ipairs(self.spots or {}) do
+      if not available or not s.TO_AC then out[#out + 1] = s end
+    end
+    return out
+  end
   MOCK.airbases[name] = ab
   return ab
 end

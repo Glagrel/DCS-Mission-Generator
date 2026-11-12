@@ -70,6 +70,8 @@ def load_state(store: Store, cid: str) -> State:
         setattr(st, attr, {o.id: o for o in store.all(cid, kind, model)})
     st.ato = store.get(cid, "ato", f"ato-{meta.turn}", Ato)
     st.sortie = store.get(cid, "sortie", f"sortie-{meta.turn}", SortieResult)
+    from .campaign import ensure_plane_guards
+    ensure_plane_guards(st)          # campaigns saved before every carrier had a plane guard
     return st
 
 

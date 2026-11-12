@@ -1,12 +1,13 @@
 # Air-defence site templates. units: pydcs vehicle id -> count. range_km is the threat ring.
-SA-2:      {year: 1957, role: sam, range_km: 40,  units: {SNR_75V: 1, S_75M_Volhov: 6, "p-19 s-125 sr": 1}}
-SA-3:      {year: 1961, role: sam, range_km: 18,  units: {"snr s-125 tr": 1, "5p73 s-125 ln": 4, "p-19 s-125 sr": 1}}
-SA-5:      {year: 1967, role: sam, range_km: 200, units: {RPC_5N62V: 1, S-200_Launcher: 4, RLS_19J6: 1}}
+# The search radar comes first in every site: Skynet IADS reads the site's radar from its first unit.
+SA-2:      {year: 1957, role: sam, range_km: 40,  units: {"p-19 s-125 sr": 1, SNR_75V: 1, S_75M_Volhov: 6}}
+SA-3:      {year: 1961, role: sam, range_km: 18,  units: {"p-19 s-125 sr": 1, "snr s-125 tr": 1, "5p73 s-125 ln": 4}}
+SA-5:      {year: 1967, role: sam, range_km: 200, units: {RLS_19J6: 1, RPC_5N62V: 1, S-200_Launcher: 4}}
 SA-6:      {year: 1967, role: sam, range_km: 25,  units: {"Kub 1S91 str": 1, "Kub 2P25 ln": 4}}
 SA-8:      {year: 1971, role: sam, range_km: 10,  units: {"Osa 9A33 ln": 2}}
 SA-9:      {year: 1968, role: sam, range_km: 4,   units: {"Strela-1 9P31": 2}}
-SA-10:     {year: 1985, role: sam, range_km: 75,  units: {"S-300PS 40B6M tr": 1, "S-300PS 40B6MD sr": 1, "S-300PS 54K6 cp": 1, "S-300PS 64H6E sr": 1, "S-300PS 5P85C ln": 4}}
-SA-11:     {year: 1980, role: sam, range_km: 35,  units: {"SA-11 Buk CC 9S470M1": 1, "SA-11 Buk SR 9S18M1": 1, "SA-11 Buk LN 9A310M1": 3}}
+SA-10:     {year: 1985, role: sam, range_km: 75,  units: {"S-300PS 64H6E sr": 1, "S-300PS 40B6MD sr": 1, "S-300PS 40B6M tr": 1, "S-300PS 54K6 cp": 1, "S-300PS 5P85C ln": 4}}
+SA-11:     {year: 1980, role: sam, range_km: 35,  units: {"SA-11 Buk SR 9S18M1": 1, "SA-11 Buk CC 9S470M1": 1, "SA-11 Buk LN 9A310M1": 3}}
 SA-13:     {year: 1976, role: sam, range_km: 5,   units: {Strela-10M3: 2}}
 SA-15:     {year: 1986, role: sam, range_km: 12,  units: {"Tor 9A331": 2}}
 SA-19:     {year: 1982, role: sam, range_km: 8,   units: {"2S6 Tunguska": 2}}
@@ -19,11 +20,11 @@ EWR-55G6:  {year: 1982, role: ewr, range_km: 400, units: {"55G6 EWR": 1}}
 EWR-P19:   {year: 1974, role: ewr, range_km: 160, units: {"p-19 s-125 sr": 1}}
 HAWK:      {year: 1960, role: sam, range_km: 45,  units: {"Hawk sr": 1, "Hawk tr": 1, "Hawk pcp": 1, "Hawk cwar": 1, "Hawk ln": 3}}
 PATRIOT:   {year: 1984, role: sam, range_km: 100, units: {"Patriot str": 1, "Patriot ECS": 1, "Patriot cp": 1, "Patriot AMG": 1, "Patriot EPP": 1, "Patriot ln": 4}}
-ROLAND:    {year: 1977, role: sam, range_km: 8,   units: {"Roland ADS": 2, "Roland Radar": 1}}
-RAPIER:    {year: 1971, role: sam, range_km: 7,   units: {rapier_fsa_launcher: 2, rapier_fsa_blindfire_radar: 1, rapier_fsa_optical_tracker_unit: 1}}
+ROLAND:    {year: 1977, role: sam, range_km: 8,   units: {"Roland Radar": 1, "Roland ADS": 2}}
+RAPIER:    {year: 1971, role: sam, range_km: 7,   units: {rapier_fsa_blindfire_radar: 1, rapier_fsa_launcher: 2, rapier_fsa_optical_tracker_unit: 1}}
 CHAPARRAL: {year: 1969, role: sam, range_km: 8,   units: {"M48 Chaparral": 2}}
 AVENGER:   {year: 1989, role: sam, range_km: 5,   units: {"M1097 Avenger": 2}}
-NASAMS:    {year: 1998, role: sam, range_km: 25,  units: {NASAMS_Command_Post: 1, NASAMS_Radar_MPQ64F1: 1, NASAMS_LN_C: 3}}
+NASAMS:    {year: 1998, role: sam, range_km: 25,  units: {NASAMS_Radar_MPQ64F1: 1, NASAMS_Command_Post: 1, NASAMS_LN_C: 3}}
 GEPARD:    {year: 1976, role: aaa, range_km: 4,   units: {Gepard: 3}}
 VULCAN:    {year: 1968, role: aaa, range_km: 2,   units: {Vulcan: 3}}
 EWR-FPS117: {year: 1980, role: ewr, range_km: 400, units: {FPS-117: 1}}

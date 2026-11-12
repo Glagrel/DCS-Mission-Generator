@@ -283,7 +283,8 @@ def _wdata(clsid: str) -> Dict[str, Any]:
 
 
 def weapon_name(clsid: str) -> str:
-    return str(_wdata(clsid).get("name", ""))
+    from .units import weapon_label
+    return weapon_label(clsid) if clsid else ""
 
 
 def _short(name: str) -> str:
@@ -306,11 +307,18 @@ def adapt(actype, pylons: List[Tuple[int, Dict[str, Any]]], w: Dict[str, Any]) \
             continue
         best, gap = None, None
         P = getattr(actype, f"Pylon{n}", None)
+        if getattr(actype, "sortie_mod_folder", None) is not None:
+            P = None                                  # a mod type: never a base-game store list
         if P is not None:
-            for attr, val in vars(P).items():
-                if attr.startswith("_") or not isinstance(val, tuple) or len(val) < 2 or not isinstance(val[1], dict):
-                    continue
-                c2 = val[1].get("clsid", "")
+            options = [val[1].get("clsid", "") for attr, val in vars(P).items()
+                       if not attr.startswith("_") and isinstance(val, tuple) and len(val) >= 2
+                       and isinstance(val[1], dict)]
+        else:
+            # mod aircraft (CJS Super Hornet): only stores the mod's own payloads hang on this station
+            from .mods import station_clsids
+            options = station_clsids(actype, n)
+        if options:
+            for c2 in options:
                 n2 = weapon_name(c2).lower()
                 if classify(n2) != "GPS" or "agm" in n2 or "slam" in n2 or not re.search(r"jdam|gbu-", n2):
                     continue                              # a GPS bomb for a bomb/Maverick pylon, never a cruise missile

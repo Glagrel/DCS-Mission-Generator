@@ -93,8 +93,8 @@ and tested against fixtures/mocks only; see TEST_IN_DCS.md for the checks.
     each other's flight cards (labelled by callsign).
 28. **Dedicated server on another PC:** copy the event file back or point *Server Saved Games*
     at a share; the mission falls back to that server's own Saved Games folder.
-29. **Campaigns created before the carrier-support update** have no SH-60B squadrons, so they get
-    the recovery tanker but no plane guard. Start a new career to get both.
+29. **Plane guards in older campaigns** are added on load (one SH-60B squadron per NATO carrier or
+    LHA without one), so no new career is needed any more.
 30. **JOIN timing for AI:** the AI does not hold at the JOIN point; flights are timed to arrive by
     the push time but may pass through early.
 
@@ -108,3 +108,24 @@ weapon warehouses (now unlimited by default); loadout chosen by name order; defa
 cleared; no carrier TACAN/ICLS or tanker TACAN.
 Still open: limited weapon stock (experimental). Runway in use and QNH in tower calls are now
 implemented but not yet checked in DCS (TEST_IN_DCS 7.13).
+
+## Added with mods, deck dressing, JTAC and community scripts (not yet seen in DCS)
+
+31. **Deck statics** are placed from `Airbase:getParking()` at run time and linked to the ship
+    (`linkUnit` / `linkOffset`). Not yet seen in DCS: the starboard/bow-catapult rule uses deck
+    geometry measured from the ship's position, and whether DCS puts a scripted linked static
+    exactly on the deck (rather than at sea level) needs a look on the first run. Switch off in
+    Settings if a deck looks wrong. The reserve is deliberately generous, so a busy deck may get
+    no statics at all.
+32. **UH-60L mod has no Seahawk variant** (2.1.5): the plane guard is the UH-60L in the mod's
+    "US Navy Grey" livery.
+33. **Mod squadrons** join new careers only; an existing campaign keeps its squadrons (the
+    UH-60L plane-guard swap works in any campaign).
+34. **Growler AEA is shelved** (`addons.SHELVED`): the script cannot be downloaded at the moment,
+    so it is hidden from Settings and never loaded. Its wiring (seat naming, delayed load) is kept.
+    Before switching it back on, check it does not fight Skynet: both switch SAM radars. AI
+    Growlers jam through Skynet's own jammer, when Skynet is on.
+35. **Skynet needs MIST**; MIST 4.5.107 is embedded with it. Skynet sites are added by group name
+    (`S|sam|...`), EWRs by unit name.
+36. **JTAC** is hidden and immortal (usual for scripted JTACs). Laser codes 1688, 1686, ... and
+    frequencies 133.000 AM, 133.500 AM ... are fixed per mission.

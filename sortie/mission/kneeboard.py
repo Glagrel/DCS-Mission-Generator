@@ -152,6 +152,7 @@ def support_page(st: State, brief: Dict[str, Any], units: str) -> bytes:
     rows += [["AWACS", a["callsign"], _freq(a["freq"]), "-", "-"] for a in brief["awacs"]]
     if brief.get("gci"):
         rows.append(["GCI", brief["gci"].get("callsign", "GCI"), _freq(brief["gci"]["freq"]), "-", "-"])
+    rows += [["JTAC", j["callsign"], f"{j['freq']:.3f} AM", "-", f"LASER {j['code']}"] for j in brief.get("jtacs") or []]
     if rows:
         p.table([("ROLE", 120), ("CALLSIGN", 190), ("FREQ", 110), ("TACAN", 90), ("ALT", 150)], rows, small=True)
     else:

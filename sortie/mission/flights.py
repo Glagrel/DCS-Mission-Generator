@@ -14,7 +14,7 @@ from dcs.point import PointAction
 from dcs.terrain.terrain import NoParkingSlotError
 from dcs.unit import Skill
 
-from .. import geo, navaids, terrain, units, weather
+from .. import geo, mods, navaids, terrain, units, weather
 from ..ato import route
 from ..models_ato import Ato, Flight, Package
 from ..state import State
@@ -41,10 +41,11 @@ def main_task(aircraft: str, sortie_task: str):
 class FlightBuilder:
     def __init__(self, m, st: State, ato: Ato, sel: Selection, man: Manifest, ships: Dict[str, Any],
                  seats: Dict[str, List[int]], multiplayer: bool, skills: Dict[str, str], warnings: List[str],
-                 t0: float, d: Dict[str, Any], hot: bool = False) -> None:
+                 t0: float, d: Dict[str, Any], hot: bool = False, growler_types: Optional[List[str]] = None) -> None:
         self.m, self.st, self.ato, self.sel, self.man = m, st, ato, sel, man
         self.ships, self.seats, self.multiplayer = ships, seats, multiplayer
         self.skills, self.warnings, self.t0, self.d, self.hot = skills, warnings, t0, d, hot
+        self.growler_types = list(growler_types or [])   # human seats here get the Growler AEA name prefix
         self.groups: Dict[str, Any] = {}          # flight id -> pydcs group
         self.carrier_support: List[Dict[str, Any]] = []
         self.parked: Dict[str, List[Any]] = {}    # base id -> [(take-off time, group)] for stand re-use
@@ -82,9 +83,14 @@ class FlightBuilder:
         m, st, t0 = self.m, self.st, self.t0
         sq = st.squadrons[f.squadron_id]
         base = st.airbases[sq.airbase_id]
-        actype = units.aircraft_type(f.aircraft)
+        # mod aircraft: a mod that is off flies its base-game fallback; an active mod can stand
+        # in for a base type (UH-60L for the SH-60B plane guard, in US Navy grey)
+        ac, livery, note = mods.flown_type(f.aircraft, f.task)
+        if note and (f.is_player or self.seats.get(f.id)):
+            self.warnings.append(f"{f.callsign}: {note}.")
+        actype = units.aircraft_type(ac)
         country = m.country(sq.country)
-        mt = main_task(f.aircraft, f.task)
+        mt = main_task(ac, f.task)
         name = gname("flt", f.id)
         humans = self.seats.get(f.id, [])
         ph = clock.GROUND if (f.is_player or humans) else clock.phase(f, t0)
@@ -147,7 +153,15 @@ class FlightBuilder:
                 group.points[0].sortie_action = "orbit"
                 group.points[0].sortie_hold = state.hold_s
         self._crew(f, sq, group, humans)
-        self._payload(f, group)
+        if humans and ac in self.growler_types:
+            # the Growler AEA script works on units whose name starts with "[EA-18G]"
+            from ..addons import GROWLER_PREFIX
+            for i in humans:
+                group.units[i].name = f"{GROWLER_PREFIX} {group.units[i].name}"
+        if livery:
+            for u in group.units:
+                u.livery_id = livery
+        self._payload(f, group, ac)
         if self.st.meta.era_kind != "ww2":
             codes.set_laser(group, codes.laser(self.ato, f))
         group.set_frequency(f.freq)
@@ -160,7 +174,7 @@ class FlightBuilder:
         f.callsign = self._dcs_callsign(group) or f.callsign
         airborne = group.points[0].type == "Turning Point"
         self.man.add(name, "flight", f.id, len(group.units), player=f.is_player, task=f.task,
-                     squadron=sq.id, coalition=f.coalition, aircraft=f.aircraft, callsign=f.callsign,
+                     squadron=sq.id, coalition=f.coalition, aircraft=ac, callsign=f.callsign,
                      airborne_start=airborne, phase=ph, start_delay_s=round(delay),
                      shared_stand=bool(getattr(group, "late_activation", False)),
                      end_s=clock.rel(f.waypoints[-1].eta_s, t0),
@@ -216,18 +230,21 @@ class FlightBuilder:
             else:
                 group.units[i].set_player()         # single player: the one "Player" slot
 
-    def _payload(self, f: Flight, group) -> None:
+    def _payload(self, f: Flight, group, ac: Optional[str] = None) -> None:
         # choose again at build time: payload files or the selection rules may have changed
         # since the ATO was planned
-        f.loadout = loadouts.pick(f.aircraft, f.task) or f.loadout
-        pyl = loadouts.pylons(f.aircraft, f.loadout)
+        ac = ac or f.aircraft
+        pick = loadouts.pick(ac, f.task)
+        if ac == f.aircraft:
+            f.loadout = pick or f.loadout
+        pyl = loadouts.pylons(ac, pick or (f.loadout if ac == f.aircraft else ""))
         if not pyl:
             if self.seats.get(f.id):
-                self.warnings.append(f"No stock loadout found for {f.aircraft}/{f.task}: aircraft spawn clean; "
+                self.warnings.append(f"No stock loadout found for {ac}/{f.task}: aircraft spawn clean; "
                                      "re-arm on the ramp.")
             return
         if self.wx:
-            pyl, notes, keep, dead = weather.adapt(units.aircraft_type(f.aircraft), list(pyl), self.wx)
+            pyl, notes, keep, dead = weather.adapt(units.aircraft_type(ac), list(pyl), self.wx)
             if notes:
                 self.weapon_notes[f.id] = notes
                 if f.is_player or self.seats.get(f.id):

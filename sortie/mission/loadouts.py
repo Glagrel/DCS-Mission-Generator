@@ -71,7 +71,8 @@ def _reset_cache() -> None:
 
 
 def configure_from_settings(settings) -> None:
-    from .. import config
+    from .. import config, mods
+    mods.register(settings)                # mod aircraft switched on in Settings become pydcs types
     configure(config.resolved_install(settings), config.resolved_saved_games(settings))
 
 
@@ -116,13 +117,8 @@ USER_PREFIX = "SORTIE "       # a payload named "SORTIE SEAD" etc. made in the M
 
 
 def _stores(payload: dict) -> List[str]:
-    from dcs import weapons_data
-    out = []
     pyl = payload.get("pylons", {})
-    for p in (pyl.values() if isinstance(pyl, dict) else pyl):
-        w = weapons_data.weapon_ids.get(p.get("CLSID", ""))
-        out.append((w["name"] if w else p.get("CLSID", "")).lower())
-    return out
+    return [units.weapon_label(p.get("CLSID", "")).lower() for p in (pyl.values() if isinstance(pyl, dict) else pyl)]
 
 
 def _has(store: str, words: List[str]) -> bool:
@@ -219,10 +215,10 @@ def pylons(aircraft: str, name: str):
 
 def describe(aircraft: str, name: str) -> List[str]:
     """Human-readable store list for the briefing (CLSIDs resolved through pydcs weapon data)."""
-    from dcs import weapons_data
     out: Dict[str, int] = {}
     for _, data in pylons(aircraft, name) or []:
-        w = weapons_data.weapon_ids.get(data["clsid"])
-        label = w["name"] if w else data["clsid"]
-        out[label] = out.get(label, 0) + 1
+        n, label = units.weapon_display(data["clsid"])
+        if label.strip("<>").lower() == "clean":
+            continue
+        out[label] = out.get(label, 0) + n
     return [f"{n} x {label}" for label, n in out.items()]

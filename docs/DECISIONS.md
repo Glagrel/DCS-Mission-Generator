@@ -150,3 +150,23 @@ Entries are numbered; **FLAG** marks things that need in-sim verification or lat
     dcs.log says it was started with, which is how the dedicated server's install is found).
     If the write is refused it is retried elevated through the normal UAC prompt. The elevated
     branch cannot be covered by automated tests. **FLAG**
+41. **Recovery tanker altitude** follows the stack, not the refuelling track: 6,000 ft / 274 kt
+    overhead the carrier in the ATO, briefing and DCS task alike (was FL220 in the route).
+42. **Plane guard on every NATO carrier/LHA** (user request): `campaign.ensure_plane_guards` adds a
+    2-airframe SH-60B (SH-3W before 1984) squadron to a ship without one, at career start and on
+    load; carrier support of any friendly ship is top priority in the performance budget.
+43. **Deck dressing**: DCS Liberation only spawns idle aircraft at airfields (never on ships,
+    `aircraftgenerator.spawn_unused_aircraft` skips non-`Airfield` control points). SORTIE does put
+    statics on decks, but at run time from the ship's parking table (only free spots, starboard,
+    clear of the bow catapults' run on a CVN, never out of a reserve of every aircraft using that
+    deck + 4). **FLAG** (not yet seen in DCS)
+44. **Mod aircraft** are registered with pydcs only while installed AND switched on
+    (`sortie/mods.py`); types copy numbers from the mods' own Lua; payloads are read with lupa.
+    Super Hornets subclass pydcs's F/A-18C for radios/properties but hide its `PylonN` store lists,
+    so nothing can hang a base-game Hornet store on a Super Hornet station.
+45. **Community scripts** (`sortie/addons.py`): files live in `vendor/addons` (gitignored,
+    `tools/fetch_addons.py`). Splash Damage settings are parsed from the script's own option
+    table and written into the embedded copy right after that table. Skynet and Hound are set up
+    by `sortie_addons.lua` from the manifest. Growler AEA (loads a few seconds in, as its author asks)
+    is shelved until the script can be downloaded.
+46. **JTAC**: base-DCS FAC task (9-line) on a hidden, immortal HMMWV; MOOSE AUTOLASE optional.

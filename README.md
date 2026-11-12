@@ -201,9 +201,61 @@ use.
 
 ### Carrier operations
 
-When a carrier is in the mission the ATO adds a plane-guard helicopter (SH-60B, about 1 nm off the
-starboard side at 300 ft; kept on station by MOOSE's RESCUEHELO when MOOSE is embedded) and a
-recovery tanker overhead (S-3B at 6,000 ft using DCS's Recovery Tanker task).
+Every aircraft-carrying ship of a NATO coalition (CVN and LHA) has a plane-guard helicopter
+airborne: SH-60B (SH-3 before 1984, UH-60L in US Navy grey when that mod is on), about 1 nm off the
+starboard side at 300 ft, kept on station by MOOSE's RESCUEHELO when MOOSE is embedded. A ship
+the theater gave no helicopter squadron gets one automatically (existing campaigns too). Carrier
+support flights are never left out by the performance limit. The carrier also gets a recovery
+tanker overhead (S-3B at 6,000 ft / 274 kt using DCS's Recovery Tanker task).
+
+**Deck dressing** (Settings, on by default): the air wing's aircraft that are not flying this
+mission are parked on the CVN and LHA decks as statics. DCS Liberation does not do this on ships
+at all, because statics on the wrong spots stop the deck crew and the AI. SORTIE places them in
+the mission from the ship's own parking table: only spots free at mission start, only to
+starboard and clear of the bow catapults and the landing area, never more than the setting
+(4 on an LHA), and never out of the reserve: every aircraft that spawns on or recovers to that
+deck during the mission, plus 4 spare spots, is always left free.
+
+### JTAC
+
+With a CAS or interdiction package on the board, a ground JTAC (HMMWV) sits 3 km on the friendly
+side of the target: DCS's own 9-line through the F10/comms menu, on its own VHF AM frequency
+(133.000, 133.500, ...) and laser code (1688, 1686, ...), both on the briefing and kneeboard. It is
+hidden from the AI and immortal so it lasts the mission. With MOOSE embedded, AUTOLASE also lets
+it find, smoke and lase targets by itself (F10 -> AUTOLASE). Both can be switched off in Settings.
+
+### Mod aircraft
+
+Settings -> Mod aircraft lists the supported community mods found in
+`Saved Games\DCS.openbeta\Mods\aircraft`: **A-4E-C**, **AH-6J / MH-6J**, **CJS Super Hornets
+(F/A-18E, F/A-18F, EA-18G)** and **UH-60L**. Switched on, they become known aircraft: new
+careers get squadrons flying them (VFA-143 F/A-18E, VFA-102 F/A-18F and VAQ-141 EA-18G on the
+George Washington, 160th SOAR AH-6J at Ras Al Khaimah in the Gulf; VMA-131 A-4E-C in the Cold
+War), they appear under Owned modules, and the UH-60L replaces the SH-60B as plane guard. A mod
+switched off later is flown as its base-game stand-in (F/A-18C, F-5E, OH-58D, UH-60A) with a note.
+
+Super Hornet loadouts: the CJS mod builds on the F/A-18C but does not use its store ids. Every
+store is a station-specific wrapper that exists only in the mod (for example
+`{SUPERHORNET_PYLON_02_OB_MK_1X_GBU-12}`), and a base Hornet store is not valid on a Super Hornet
+station. SORTIE therefore only ever uses whole payloads from the mod's own `UnitPayloads` file
+(read with a real Lua interpreter, because the file uses local station constants pydcs cannot
+parse) or your own `SORTIE <TASK>` payloads, and a weather swap only picks a store the mod's own
+payloads already hang on that same station.
+
+### Community mission scripts
+
+Settings -> Community mission scripts switches these on, each with its settings editable there:
+
+| Script | What it does | Settings in the GUI |
+|---|---|---|
+| [Splash Damage](https://github.com/stephenpostlethwaite/DCSSplashDamageScript) 3.4.7 | Blast waves, secondary explosions, cook-offs, cluster spread | All ~240 options of the script's own table, read from the file, grouped by its sections |
+| [Skynet IADS](https://github.com/walder/Skynet-IADS) (+ MIST) | The enemy SAMs and EWRs work as a network; AI EA-18G/EA-6B jam through Skynet's jammer | Go-live range, engagement zone, HARM detection, AWACS as EW, point defence, AI jammers, debug |
+| [Hound ELINT](https://github.com/uriba107/dcs-hound) | Your ELINT-capable aircraft locate enemy radars and mark them on the F10 map | Markers and style, pre-briefed known sites, BDA, text/controller, NATO names, platform errors |
+
+The GitHub scripts download with the button in Settings or `python tools\fetch_addons.py` into
+`vendor\addons\`. The [Growler AEA](https://forum.dcs.world/topic/385186-ea-18g-style-electronic-warfare-script-v2/)
+script (human EA-18G jamming) is on the back burner: it cannot be downloaded at the moment. Its
+wiring is kept but hidden (`addons.SHELVED`). AI EA-18G/EA-6B flights jam through Skynet. SAM sites always list their search radar first, which Skynet needs.
 
 ### Performance profiles
 

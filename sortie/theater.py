@@ -191,7 +191,10 @@ class Theater(BaseModel):
 
 def load_file(path: Path) -> Theater:
     with open(path, encoding="utf-8") as f:
-        return Theater(**yaml.safe_load(f))
+        t = Theater(**yaml.safe_load(f))
+    from . import mods
+    mods.extend_theater(t)           # squadrons flying mod aircraft, while those mods are on
+    return t
 
 
 def list_theaters(directory: Path = THEATER_DIR) -> List[Theater]:

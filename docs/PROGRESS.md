@@ -145,3 +145,12 @@ Not done yet:
 - In the mission: voice on the controller and flight frequencies, status message, F10 Radio check,
   numbers spoken digit by digit, runway in use / wind / altimeter read from the running mission.
 - Not yet heard from inside a DCS mission (TEST_IN_DCS 7.8, 7.13). 203 tests pass.
+
+## Carriers, mods, JTAC and community scripts
+- Recovery tanker at 6,000 ft / 274 kt in the route and briefing (was FL220).
+- Plane guard on every NATO CVN and LHA (added to old campaigns on load, top budget priority).
+- Deck dressing with statics from the ship's live parking table, with an AI reserve.
+- Ground JTAC (DCS FAC 9-line) with CAS/interdiction packages, MOOSE AUTOLASE optional.
+- Mods: A-4E-C, AH-6J/MH-6J, CJS Super Hornets, UH-60L (navy-grey plane guard), toggles in Settings.
+- Community scripts with GUI settings: Splash Damage (all options), Skynet IADS, Hound ELINT.
+  `tools/fetch_addons.py` and a download button. Growler AEA wired but shelved (not downloadable).

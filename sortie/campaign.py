@@ -121,11 +121,41 @@ def build_state(t: Theater, opt: CareerOptions, settings: Optional[config.Settin
             id=n.id, name=n.name, coalition=n.coalition, country=n.country, units=list(n.units),
             lat=n.lat, lon=n.lon, role=n.role, track=[M.LatLon(lat=p[0], lon=p[1]) for p in n.track])
     place_ground_units(st)
+    ensure_plane_guards(st)
     sq = st.squadrons[opt.squadron_id]
     from .debrief.career import rank_name
     st.pilot = M.Pilot(callsign=opt.callsign, squadron_id=sq.id, aircraft=sq.aircraft,
                        rank=rank_name(st.meta.doctrine.get(opt.side, "nato"), opt.side, 0, t.era.kind))
     return st
+
+
+# plane-guard helicopters, newest first: the first one in era flies from carriers without one
+PLANE_GUARD_TYPES = ("SH-60B", "SH-3W")
+
+
+def ensure_plane_guards(st: State) -> List[str]:
+    """Every aircraft-carrying ship of a NATO coalition (CVN, LHA ...) keeps a plane-guard
+    helicopter squadron aboard, even when the theater template gave it none. Runs at campaign
+    creation and on every load, so campaigns made before this rule get one too.
+    Returns the ids of squadrons added."""
+    added: List[str] = []
+    for b in st.airbases.values():
+        if b.kind != "carrier" or st.meta.doctrine.get(b.coalition, "nato") != "nato":
+            continue
+        if any(s.airbase_id == b.id and "SAR" in s.tasks for s in st.squadrons.values()):
+            continue
+        ac = next((a for a in PLANE_GUARD_TYPES if units.exists(a)
+                   and units.in_era(a, st.meta.year, st.meta.era_kind)), None)
+        ng = st.naval_groups.get(b.naval_group or b.id)
+        if ac is None or ng is None:
+            continue
+        sid = f"{b.id}_pg"
+        st.squadrons[sid] = M.Squadron(
+            id=sid, name=f"{b.name} plane guard", coalition=b.coalition, country=ng.country, airbase_id=b.id,
+            aircraft=ac, tasks=["SAR"], airframes=2, airframes_max=2, pilots=3, pilots_max=3,
+            callsign="Seahawk" if ac == "SH-60B" else "Angel")
+        added.append(sid)
+    return added
 
 
 def _callsign(name: str) -> str:

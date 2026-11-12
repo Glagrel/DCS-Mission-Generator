@@ -16,11 +16,11 @@ from dcs.coalition import Coalition
 from dcs.weather import Wind
 from pydantic import BaseModel, Field
 
-from .. import config, navaids, terrain
+from .. import addons, config, mods, navaids, terrain
 from ..atc import luacfg
 from ..models_ato import Ato
 from ..state import State
-from . import briefing, budget, clock, forces, kneeboard, loadouts, scripts, slots, warehouses
+from . import briefing, budget, clock, deck, forces, jtac, kneeboard, loadouts, scripts, slots, warehouses
 from .flights import FlightBuilder
 
 log = logging.getLogger("sortie.mission")
@@ -123,8 +123,11 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
             warnings.append(f"{missing} of {extra} extra co-op seats could not be placed: no friendly flight "
                             "on the ground this cycle flies an aircraft from the co-op module list.")
         skills = {"friendly": diff["friendly_skill"], "enemy": diff["enemy_skill"]}
-        fb = FlightBuilder(m, st, ato, sel, man, ships, seats, multiplayer, skills, warnings, t0, d, hot)
+        fb = FlightBuilder(m, st, ato, sel, man, ships, seats, multiplayer, skills, warnings, t0, d, hot,
+                           growler_types=addons.growler_types(settings))
         fb.build_all()
+        jtacs = jtac.add_jtacs(m, st, ato, sel, man, settings.jtac_autolase) if settings.jtac else []
+        decks = deck.plan(st, ato, sel, ships, fb, settings) if settings.deck_statics else []
         moose_on = scripts.MOOSE_FILE.is_file() if with_moose is None else (with_moose and scripts.MOOSE_FILE.is_file())
         for entry in fb.carrier_support:            # MOOSE's RESCUEHELO spawns from a late-activated template
             entry["moose"] = moose_on
@@ -136,6 +139,7 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
         nav = navaids.home_nav(st, home, config.resolved_install(settings), m.terrain)
         brief = briefing.build(st, ato, reason, t0=t0, units=settings.units, slots=slot_list, nav=nav)
         brief["stn"], brief["weapon_notes"] = dict(fb.stn), dict(fb.weapon_notes)
+        brief["jtacs"] = jtacs
         text = briefing.text(st, brief)
         kneeboard.attach(m, st, ato, brief, slot_list, t0, settings.units, warnings)
         m.set_sortie_text(f"SORTIE cycle {st.meta.turn}: {brief['mission']} - {brief['target']['name']}")
@@ -157,8 +161,17 @@ def build_mission(st: State, ato: Ato, reason: str, settings: config.Settings,
             "event_dirs": [str(p.parent) + "\\" for p in config.event_file_candidates(settings)[:2]],
             "warehouses": warehouses.lua_table(st, logistics, carrier_units),
             "atc": luacfg.build(st, ato, settings, man),
+            "jtacs": jtacs, "deck": decks,
+            "addons": addons.lua_config(settings, st, man, m),
         }
-        names = scripts.attach(m, cfg, bool(cfg["atc"].get("enabled")), with_moose)
+        import tempfile
+        extra = addons.files_for_mission(settings, Path(tempfile.mkdtemp(prefix="sortie_addons_")))
+        extra["delay_s"] = addons.params(settings, "growler").get("start_delay_s", 5)
+        if addons.is_on(settings, "growler") and not any(
+                t in addons.growler_types(settings) for t in (r.get("aircraft") for r in slot_list)):
+            warnings.append("Growler AEA is on, but no human seat in this mission flies "
+                            + "/".join(addons.growler_types(settings)) + ": the script only works for human crews.")
+        names = scripts.attach(m, cfg, bool(cfg["atc"].get("enabled")), with_moose, extra)
         out_dir = Path(out_dir) if out_dir else config.resolved_output_dir(settings)
         out_dir.mkdir(parents=True, exist_ok=True)
         path = out_dir / mission_filename(st)

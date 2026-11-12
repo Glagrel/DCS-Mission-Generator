@@ -9,8 +9,7 @@ lua51 = pytest.importorskip("lupa.lua51")
 ROOT = Path(__file__).resolve().parent.parent
 LUA = ROOT / "sortie" / "lua"
 MOCK = Path(__file__).resolve().parent / "lua_mock.lua"
-CORE = ["sortie_json.lua", "sortie_core.lua", "sortie_events.lua", "sortie_warehouse.lua", "sortie_carrier.lua",
-        "sortie_spawn.lua"]
+from sortie.mission.scripts import CORE_SCRIPTS as CORE  # noqa: E402  (same order as in a mission)
 
 
 class LuaEnv:

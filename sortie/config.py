@@ -37,6 +37,12 @@ class Settings(BaseModel):
     srs_port: int = 5002
     piper_voice: str = ""
     google_credentials: str = ""
+    mods: Dict[str, bool] = Field(default_factory=dict)       # community aircraft mods switched on (sortie.mods)
+    addons: Dict[str, Any] = Field(default_factory=dict)      # community scripts: {key: {"enabled", "params"}}
+    deck_statics: bool = True                # parked aircraft on carrier decks (spots the AI never needs)
+    deck_statics_max: int = 8                # at most this many per carrier / LHA
+    jtac: bool = True                        # ground JTAC with CAS / interdiction packages
+    jtac_autolase: bool = True               # MOOSE AUTOLASE: the JTAC lases and smokes on its own
     overrides: Dict[str, Any] = Field(default_factory=dict)  # deep-merged over defaults.yaml
 
 

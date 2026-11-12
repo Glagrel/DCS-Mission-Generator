@@ -89,7 +89,11 @@ def select(st: State, ato: Ato, limits: Dict[str, Any], t0: float = 0.0) -> Sele
             continue
         dist = _flight_dist(f, path)
         support = f.task in ("AWACS", "TANKER", "SAR") and f.coalition == side
-        boat = support and p.target.kind == "airbase" and p.target.id in home_carriers
+        # flight-ops support over ANY friendly carrier (plane guard, recovery tanker) always flies:
+        # every CVN and LHA in the mission keeps its plane guard, not just the player's boat
+        boat = support and p.target.kind == "airbase" and (
+            p.target.id in home_carriers or st.airbases.get(p.target.id) is not None
+            and st.airbases[p.target.id].kind == "carrier")
         if dist <= bubble or support:
             cands.append((-2.0 if boat else -1.0 if support else dist, f))
     for dist, f in sorted(cands, key=lambda x: (x[0], x[1].id)):
