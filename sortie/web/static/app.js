@@ -182,11 +182,23 @@ SORTIE.sanitizePopup = function (list) {
   });
 };
 
+// ---- Voice check -----------------------------------------------------------------------------
+SORTIE.voiceRows = function (v) {
+  const row = (label, ok, text, cls) => `<tr><td>${label}</td><td class="${ok ? 'ok' : (cls || 'warn')}">${text}</td></tr>`;
+  return '<table>' +
+    row('ATC layer and voice engine', v.wanted, v.wanted ? 'on (' + esc(v.engine) + ')' : 'off - tick the box and pick a voice engine above, then save', 'dim') +
+    row('SRS speech tool', !!v.exe, v.exe ? `<span class="path">${esc(v.exe)}</span>` : 'DCS-SR-ExternalAudio.exe not found in the SRS folder above') +
+    row('SRS server on this PC, port ' + v.port, v.server_up, v.server_up ? 'running' : 'not running now - start it before the mission', 'dim') +
+    row('MOOSE in the mission', v.moose, v.moose ? 'found' : 'missing (run tools\fetch_moose.py)') +
+    row('Mission scripts may start programs', !v.blocked.length, v.blocked.length ? 'blocked (sanitized) in ' + v.blocked.map((b) => esc(b.path)).join(', ') + ' - use Desanitize above' : 'yes (desanitized)') +
+    '</table>' + (v.notes || []).filter((n) => n.indexOf('Piper') >= 0).map((n) => `<p class="dim">${esc(n)}</p>`).join('');
+};
+
 // ---- Settings --------------------------------------------------------------------------------
 SORTIE.pages.settings = async function () {
-  const [s, status, mods, san] = await Promise.all([
+  const [s, status, mods, san, vc] = await Promise.all([
     SORTIE.api('GET', '/api/settings'), SORTIE.api('GET', '/api/status'), SORTIE.api('GET', '/api/modules'),
-    SORTIE.api('GET', '/api/desanitize')]);
+    SORTIE.api('GET', '/api/desanitize'), SORTIE.api('GET', '/api/voice')]);
   const prof = status.profiles;
   $('#tab-settings').innerHTML = `
     <div class="cols2"><div>
@@ -223,10 +235,17 @@ SORTIE.pages.settings = async function () {
         <label><input type="checkbox" id="st-atc" ${s.atc_enabled ? 'checked' : ''}> Enable ATC/GCI layer (needs MOOSE in the mission)</label>
         <label>Voice engine (via MOOSE MSRS + SimpleRadio Standalone; text messages are always shown)</label>
         <select id="st-voice">${status.voices.map((x) => `<option ${x === s.voice ? 'selected' : ''}>${x}</option>`).join('')}</select>
-        <label>SRS install folder</label><input type="text" id="st-srs" value="${esc(s.srs_path)}">
+        <label>SRS install folder (the folder SRS was installed to; its ExternalAudio subfolder is found automatically)</label><input type="text" id="st-srs" value="${esc(s.srs_path)}">
         <label>SRS port</label><input type="number" id="st-srsport" value="${s.srs_port}">
         <label>Piper voice model (.onnx path or name)</label><input type="text" id="st-piper" value="${esc(s.piper_voice)}">
-        <label>Google credentials JSON path</label><input type="text" id="st-google" value="${esc(s.google_credentials)}"></div>
+        <label>Google credentials JSON path</label><input type="text" id="st-google" value="${esc(s.google_credentials)}">
+        <h3>Voice check</h3>
+        ${SORTIE.voiceRows(vc)}
+        <p class="dim">The controller is not a permanent SRS client: it joins the SRS server only while it speaks (a few seconds per call) and then leaves, so an empty client list between calls is normal. Calls go out on the controller frequency and on your flight frequency, AM. In the mission, F10 &rarr; SORTIE Control &rarr; Radio check repeats this test.</p>
+        <div class="row"><div><label>Test frequency (MHz AM)</label><input type="number" id="st-vfreq" step="0.025" value="251"></div>
+          <div><label>Coalition</label><select id="st-vside"><option value="2">blue</option><option value="1">red</option></select></div>
+          <div style="align-self:flex-end"><button id="st-vtest" ${vc.exe ? '' : 'disabled'}>Test voice through SRS</button></div></div>
+        <div id="st-vout"></div></div>
     </div><div class="panel"><h2>Owned modules</h2>
       <p class="dim">Tick the aircraft you own. Careers, transfers and reassignments only ever use ticked modules.</p>
       <div class="row"><button id="st-all">All</button><button id="st-none">None</button></div>
@@ -234,6 +253,15 @@ SORTIE.pages.settings = async function () {
     </div></div>
     <p><button class="primary" id="st-save">Save settings</button></p>`;
   SORTIE.bindSanitize($('#san-panel'), san, () => SORTIE.pages.settings());
+  $('#st-vtest').onclick = async () => {
+    const b = $('#st-vtest'), out = $('#st-vout');
+    b.disabled = true; out.innerHTML = '<p class="dim">Speaking (takes a few seconds)...</p>';
+    try {
+      const r = await SORTIE.api('POST', '/api/voice/test', { freq: parseFloat($('#st-vfreq').value) || 251, coalition: parseInt($('#st-vside').value, 10) });
+      out.innerHTML = `<p class="${r.ok ? 'ok' : 'warn'}">${esc(r.message)}</p>` + (r.output && !r.ok ? `<pre class="path">${esc(r.output)}</pre>` : '');
+    } catch (e) { out.innerHTML = `<p class="warn">${esc(e.message)}</p>`; }
+    b.disabled = false;
+  };
   const boxes = () => Array.from(document.querySelectorAll('.st-mod'));
   $('#st-coopall').onchange = (e) => { $('#st-coopmods').style.display = e.target.checked ? 'none' : ''; };
   document.querySelectorAll('.st-srvpick').forEach((a) => { a.onclick = (e) => { e.preventDefault(); $('#st-srv').value = a.textContent; $('#st-srvon').checked = true; }; });

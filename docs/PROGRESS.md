@@ -136,3 +136,12 @@ Not done yet:
 - `sortie/sanitize.py`, `GET/POST /api/desanitize`, Settings panel with Desanitize / Re-sanitize
   per install, pop-up after generating while an install is still sanitised. Tested against fake
   installs and in a browser; the UAC-elevated path is untested. 186 tests pass.
+
+## Voice that works, and says so when it does not
+- Why the first flight was silent: scripts sanitised (dcs.log), and the SRS folder setting did not
+  point at `ExternalAudio` (SRS 2.x). Path is now resolved in Python and in Lua.
+- `sortie/voice.py`, `GET /api/voice`, `POST /api/voice/test`, Settings "Voice check" with a test
+  button; mission warnings when voice cannot work. Run for real against SRS 2.4.1 outside DCS.
+- In the mission: voice on the controller and flight frequencies, status message, F10 Radio check,
+  numbers spoken digit by digit, runway in use / wind / altimeter read from the running mission.
+- Not yet heard from inside a DCS mission (TEST_IN_DCS 7.8, 7.13). 203 tests pass.

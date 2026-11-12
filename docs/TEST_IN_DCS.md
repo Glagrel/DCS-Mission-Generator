@@ -101,7 +101,10 @@ None of these has been run. Fill in **Actual** and **P/F** as you go. Unless sta
 | 7.5 | Approach / landing | as 7.2 | Return and land | Inbound, cleared-to-land, welcome-home messages | | |
 | 7.6 | Soviet procedures | Cold War, red side career, ATC on | Fly | Metric ranges/heights, Soviet-style phrasing, no AWACS | | |
 | 7.7 | WWII procedures | Forager, ATC on | Fly | Only simple vectors ("angels", "bandits"); no bullseye, declare, tanker or CSAR | | |
-| 7.8 | SRS voice (Windows) | Gulf / ATC on, voice windows, SRS running | Tune briefed frequency | Messages are spoken and still shown as text | | |
+| 7.7a | Voice check outside DCS | SRS server running, SRS client connected to 127.0.0.1, a radio on 251.000 AM | Settings → Test voice through SRS | Sentence is heard; all Voice check rows green | | |
+| 7.8 | SRS voice (Windows) | Gulf / ATC on, voice windows, SRS running, scripts desanitised | Stay on your flight frequency | ~20 s in: "SORTIE voice: ... speaks through SRS on ..."; messages are spoken (bearings digit by digit) and still shown as text; F10 → SORTIE Control → Radio check is heard | | |
+| 7.8a | Voice says why it is silent | as 7.8 but re-sanitised, or wrong SRS folder | Fly | ~20 s in: "SORTIE voice is OFF (text only): <reason>"; no errors | | |
+| 7.13 | Runway, wind, altimeter | Gulf / ATC on, wind set | Start up, taxi, return | Tower gives the into-wind runway of your base, wind matches the ME (from-direction, knots), altimeter matches the ME QNH | | |
 | 7.9 | SRS voice (Google) | as 7.8 with Google credentials | Tune | Spoken with Google voice | | |
 | 7.10 | Voice without MOOSE/SRS | voice windows, SRS closed | Fly | No errors; text still shown | | |
 | 7.11 | FLIGHTCONTROL tower | `atc.use_flightcontrol: true`, voice on | Taxi/take off | MOOSE tower handles your flight; no duplicate SORTIE tower texts | | |

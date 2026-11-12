@@ -82,6 +82,8 @@ def test_luacfg_default_off_and_per_theater(theaters):
     _, _, gulf = _cfg(theaters, "gulf_crisis", voice="windows")
     assert gulf["procedure"] == "nato" and gulf["voice"] == "windows" and gulf["features"]["awacs"]
     assert gulf["controller"]["callsign"] and gulf["tankers"] and gulf["units"] == "imperial"
+    assert gulf["voice_freqs"][0] == gulf["controller"]["freq"] and gulf["home"]["freq"] in gulf["voice_freqs"]
+    assert len(set(gulf["voice_freqs"])) == len(gulf["voice_freqs"])
     _, _, ww2 = _cfg(theaters, "forager_1944")
     assert ww2["procedure"] == "ww2" and not ww2["features"]["awacs"] and ww2["tankers"] == []
     assert ww2["controller"]["callsign"] == "Base" and "vector_tanker" not in ww2["phrases"]
@@ -123,16 +125,26 @@ MOCK.group{ name = 'bandits', side = 1, units = { E1 } }
 """
 
 
-def _atc_env(tmp_path, proc, voice="off", extra_setup="", caps=("AWACS", "TANKER", "GCI")):
+def _fake_srs(tmp_path, sub="ExternalAudio"):
+    """An SRS install folder as SRS 2.x lays it out: the speech tool sits in ExternalAudio."""
+    root = tmp_path / "SRS"
+    (root / sub).mkdir(parents=True, exist_ok=True)
+    (root / sub / "DCS-SR-ExternalAudio.exe").write_bytes(b"MZ")
+    return root
+
+
+def _atc_env(tmp_path, proc, voice="off", extra_setup="", caps=("AWACS", "TANKER", "GCI"), srs="C:\\SRS",
+             sanitized=False):
     atc = {"enabled": True, "procedure": proc, "voice": voice, "features": P.features(proc, list(caps)),
            "phrases": P.PHRASES[proc], "coalition": 2, "bullseye": {"lat": 0.0, "lon": 0.0},
            "home": {"name": "Al Dhafra AFB", "kind": "airfield", "freq": 251.0},
            "controller": {"callsign": "Darkstar" if proc == "nato" else P.gci_callsign(proc), "freq": 251.5},
            "tankers": [], "picture_interval": 120, "threat_range_m": P.THREAT_RANGE_M[proc],
            "picture_range_m": 185000, "player_callsign": "Viper 1",
-           "srs": {"path": "C:\\SRS", "port": 5002, "culture": "en-US", "google_credentials": ""}}
+           "voice_freqs": [251.5, 251.0],
+           "srs": {"path": str(srs), "port": 5002, "culture": "en-US", "google_credentials": ""}}
     return LuaEnv(tmp_path, scripts.config_lua({**BASE, "atc": atc}), setup=SETUP + extra_setup,
-                  scripts=CORE + ["sortie_atc.lua"])
+                  scripts=CORE + ["sortie_atc.lua"], sanitized=sanitized)
 
 
 @pytest.mark.parametrize("proc", ["nato", "soviet", "ww2"])
@@ -220,20 +232,103 @@ def test_lua_voice_uses_msrs_when_available_else_text(tmp_path):
     function MSRS:SetCulture(c) self.culture = c end
     function MSRS:SetProvider(p) self.provider = p end
     function MSRS:SetGoogle(p) self.google = p end
+    function MSRS:SetFrequencies(f) self.freqs = f end
+    function MSRS:SetModulations(m) self.mods = m end
+    function MSRS:SetLabel(l) self.label = l end
     function MSRS:PlayText(text, delay) MOCK.spoken[#MOCK.spoken + 1] = text end
     """
-    env = _atc_env(tmp_path / "a", "nato", voice="google", extra_setup=fake)
+    srs = _fake_srs(tmp_path)
+    env = _atc_env(tmp_path / "a", "nato", voice="google", extra_setup=fake, srs=srs)
     said = env.eval("SORTIE.atc.bogey_dope()")
-    assert env.eval("MOCK.msrs.provider") == "gcloud" and env.eval("MOCK.msrs.path") == "C:\\SRS"
-    assert env.eval("MOCK.spoken[#MOCK.spoken]") == said                 # spoken ...
-    assert env.eval("MOCK.texts[#MOCK.texts].text") == said              # ... and still shown as text
-    env = _atc_env(tmp_path / "b", "nato", voice="piper", extra_setup=fake)
+    assert said == "Viper 1, Darkstar, group BRAA 000/30 miles, 30 thousand, hot, hostile."
+    assert env.eval("MOCK.msrs.provider") == "gcloud"
+    assert env.eval("MOCK.msrs.path") == str(srs / "ExternalAudio")      # SRS 2.x: the tool is one folder down
+    assert list(env.eval("MOCK.msrs.freqs").values()) == [251.5, 251.0]  # controller + flight frequency
+    assert env.eval("#MOCK.msrs.mods") == 2 and env.eval("MOCK.msrs.label") == "Darkstar"
+    # spoken digit by digit, and still shown as normal text
+    assert env.eval("MOCK.spoken[#MOCK.spoken]") == (
+        "Viper 1, Darkstar, group bra zero zero zero, 30 miles, 30 thousand, hot, hostile.")
+    assert env.eval("MOCK.texts[#MOCK.texts].text") == said
+    assert env.eval("SORTIE.atc.voice.ok") is True
+    env = _atc_env(tmp_path / "b", "nato", voice="piper", extra_setup=fake, srs=srs / "ExternalAudio")
     assert env.eval("MOCK.msrs.provider") == "win"                       # documented fallback
-    env = _atc_env(tmp_path / "c", "nato", voice="windows")              # MOOSE not loaded
+    assert env.eval("MOCK.msrs.path") == str(srs / "ExternalAudio")      # the exact folder works too
+    env = _atc_env(tmp_path / "c", "nato", voice="windows", srs=srs)     # MOOSE not loaded
     assert env.eval("SORTIE.atc.msrs") is None and env.eval("SORTIE.atc.bogey_dope()") and env.errors() == []
-    env = _atc_env(tmp_path / "d", "nato", voice="off", extra_setup=fake)
+    assert "MOOSE" in env.eval("SORTIE.atc.voice.reason")
+    env = _atc_env(tmp_path / "d", "nato", voice="off", extra_setup=fake, srs=srs)
     env.eval("SORTIE.atc.bogey_dope()")
     assert env.eval("#MOCK.spoken") == 0
+
+
+def test_lua_voice_says_why_it_is_silent(tmp_path):
+    """The first flown mission was silent with no hint: sanitised scripts, and an SRS folder
+    without the speech tool. Both are now reported on screen, in the log and as an event."""
+    fake = """
+    MOCK.spoken = {}
+    MSRS = { Provider = { WINDOWS = 'win', GOOGLE = 'gcloud' } }
+    function MSRS:New() error('must not be reached') end
+    """
+    env = _atc_env(tmp_path / "a", "nato", voice="windows", extra_setup=fake, srs=tmp_path / "nowhere")
+    assert env.eval("SORTIE.atc.voice.ok") is False and "not found" in env.eval("SORTIE.atc.voice.reason")
+    env.run("MOCK.advance(21)")
+    assert any("voice is OFF" in t["text"] and "DCS-SR-ExternalAudio.exe" in t["text"]
+               for t in env.eval("MOCK.texts").values())
+    ev = [e for e in env.events() if e["ev"] == "voice"]
+    assert len(ev) == 1 and ev[0]["ok"] is False
+    assert env.eval("SORTIE.atc.radio_check()").startswith("Viper 1, Darkstar, radio check")
+    assert "No voice" in env.eval("MOCK.texts[#MOCK.texts].text") and env.errors() == []
+    env = _atc_env(tmp_path / "b", "nato", voice="windows", extra_setup=fake, srs=_fake_srs(tmp_path),
+                   sanitized=True)
+    assert "sanitised" in env.eval("SORTIE.atc.voice.reason") and env.errors() == []
+    env.run("MOCK.advance(21)")
+    assert [e for e in env.log_events() if e["ev"] == "voice"][0]["ok"] is False
+    env = _atc_env(tmp_path / "c", "nato", voice="off")                  # voice off: nothing announced
+    env.run("MOCK.advance(21)")
+    assert not any("voice" in t["text"].lower() for t in env.eval("MOCK.texts").values())
+    assert "Radio check" in set(env.eval("MOCK.menu").keys())
+
+
+def test_lua_speech_spells_out_numbers(tmp_path):
+    env = _atc_env(tmp_path, "nato")
+    assert env.eval("SORTIE.atc.spell('045')") == "zero four five"
+    assert env.eval("SORTIE.atc.spell('251.500')") == "two five one decimal five"
+    assert env.eval("SORTIE.atc.spell('2992')") == "two niner niner two"
+    assert env.eval("SORTIE.atc.spell('31L')") == "three one left"
+    assert env.eval("SORTIE.atc.spell('in use')") == "in use" and env.eval("SORTIE.atc.spell('-')") == "-"
+    spoken = env.eval("SORTIE.atc.speech('startup', { callsign = 'Viper 1', tower = 'Al Dhafra', wind_dir = '270',"
+                      " wind_speed = '10', qnh = '2992' })")
+    assert spoken == ("Viper 1, Al Dhafra Ground, start-up approved. Wind two seven zero at 10, "
+                      "altimeter two niner niner two.")
+
+
+def test_lua_runway_wind_and_altimeter_come_from_the_mission(tmp_path):
+    """Tower calls used placeholders ('runway in use', 2992). They now read the running mission."""
+    setup = """
+    local ab = MOCK.airbases['Al Dhafra AFB']
+    -- one strip 13/31 (DCS: course = negative bearing in radians), named for its 31 end
+    function ab:getRunways() return { { Name = '31', course = -math.rad(307), length = 3600 } } end
+    MOCK.wind = { x = 0, y = 0, z = 0 }
+    atmosphere = { getWind = function(p) return MOCK.wind end }
+    env.mission = { weather = { qnh = 765 } }
+    """
+    env = _atc_env(tmp_path, "nato", extra_setup=setup)
+    assert env.eval("SORTIE.atc.runway(0, 0)") == "31"                   # calm: the named end
+    env.run("MOCK.wind = { x = 3.5, y = 0, z = -3.5 }")                  # blowing towards the north-west ...
+    wdir, wspd = env.eval("SORTIE.atc.wind()")
+    assert round(wdir) == 135 and round(wspd, 1) == 4.9                  # ... so it comes FROM 135
+    assert env.eval("SORTIE.atc.runway(135, 5)") == "13"                 # take off into the wind
+    assert env.eval("SORTIE.atc.runway(300, 5)") == "31"
+    assert env.eval("SORTIE.atc.qnh()") == "3012"                        # 765 mmHg = 30.12 inHg
+    env.run("P1.air = false; MOCK.fire{ id = world.event.S_EVENT_ENGINE_STARTUP, initiator = P1 }")
+    env.run("MOCK.advance(21)")
+    said = list(env.eval("SORTIE.atc.said").values())
+    assert any("Wind 135 at 10, altimeter 3012" in t for t in said)      # 4.9 m/s = 10 kt
+    assert any("taxi to runway 13" in t for t in said)
+    sov = _atc_env(tmp_path / "s", "soviet", extra_setup=setup)
+    assert sov.eval("SORTIE.atc.qnh()") == "765"
+    plain = _atc_env(tmp_path / "p", "nato")                             # no runway data: as before
+    assert plain.eval("SORTIE.atc.runway(0, 0)") == "in use" and plain.eval("SORTIE.atc.qnh()") == "2992"
 
 
 def test_lua_fills_placeholders_with_underscores(tmp_path):
@@ -242,7 +337,7 @@ def test_lua_fills_placeholders_with_underscores(tmp_path):
     env.run("SORTIE.atc.cfg.wind_dir = 270; SORTIE.atc.cfg.wind_speed = 5")
     env.run("P1.air = false; MOCK.fire{ id = world.event.S_EVENT_ENGINE_STARTUP, initiator = P1 }")
     said = list(env.eval("SORTIE.atc.said").values())
-    assert any("Wind 270 at 5" in t for t in said)
+    assert any("Wind 270 at 10" in t for t in said)                      # 5 m/s, said in knots
     assert not any("{" in t for t in said)
     assert env.eval("SORTIE.atc.render('startup', { callsign = 'A', tower = 'B', wind_dir = '090', wind_speed = '3', qnh = '2992' })") \
         == P.render("nato", "startup", callsign="A", tower="B", wind_dir="090", wind_speed="3", qnh="2992")

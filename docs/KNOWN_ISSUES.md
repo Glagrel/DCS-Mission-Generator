@@ -39,9 +39,16 @@ and tested against fixtures/mocks only; see TEST_IN_DCS.md for the checks.
 11. **Ground units** are placed about 3 km either side of a straight front line through the
     axis and do not move or fight their way forward in DCS; the front moves between sorties.
 12. **ATC layer.** GCI "sees" every airborne hostile within 185 km (no radar modelling);
-    bearings are true, not magnetic; runway in use and QNH are not computed (placeholders in
-    tower calls). MOOSE `AWACS`, `AIRBOSS`, `CSAR` and `AI_A2A_DISPATCHER` are not used
-    (DECISIONS 20). MSRS/SRS voice is untested.
+    bearings are true, not magnetic. Runway in use, wind and altimeter are read from the running
+    mission (`Airbase:getRunways`, `atmosphere.getWind`, `env.mission.weather.qnh`) — *unverified
+    in DCS*; parallel runways are not told apart (no L/R) and carrier decks get no runway.
+    MOOSE `AWACS`, `AIRBOSS`, `CSAR` and `AI_A2A_DISPATCHER` are not used (DECISIONS 20).
+    **Voice:** the SRS speech tool was run outside DCS with the exact command line MSRS builds
+    (SRS 2.4.1, Windows voice) and reached an SRS server; speech started from inside a mission
+    is still *unverified*. The first flown mission was silent because the scripts were sanitised
+    and the SRS folder setting did not point at `ExternalAudio`; both are now detected and
+    reported (Settings → Voice check, and on screen in the mission). Voice has no position, so
+    SRS line-of-sight and distance limits do not apply to it. All voice is sent as AM.
 13. **Event log without desanitize** goes to `dcs.log`; it can be imported after the mission
     but there is no live feed.
 
@@ -99,4 +106,5 @@ start; proximity despawn of a landed flight; fuel warehouses (tonnes, readback).
 Found and fixed: unfilled `{wind_dir}` placeholders in tower calls; stores stripped by empty
 weapon warehouses (now unlimited by default); loadout chosen by name order; default pylons not
 cleared; no carrier TACAN/ICLS or tanker TACAN.
-Still open: limited weapon stock (experimental), runway in use and QNH in tower calls.
+Still open: limited weapon stock (experimental). Runway in use and QNH in tower calls are now
+implemented but not yet checked in DCS (TEST_IN_DCS 7.13).

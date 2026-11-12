@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .. import config, measure, paths, sanitize, terrain, theater, units
+from .. import config, measure, paths, sanitize, terrain, theater, units, voice
 from ..campaign import CampaignError, CareerOptions, owned
 from ..db import Store
 from ..mission import scripts
@@ -39,6 +39,12 @@ def code_stamp() -> float:
 class SanitizeRequest(BaseModel):
     path: str
     action: str                      # desanitize | restore
+
+
+class VoiceTest(BaseModel):
+    freq: float = 251.0              # MHz, AM
+    coalition: int = 2               # 1 red, 2 blue
+    text: Optional[str] = None
 
 
 class SettingsPatch(BaseModel):
@@ -168,6 +174,20 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
             raise HTTPException(400, "Could not change MissionScripting.lua. " + res["output"][-600:])
         return res
 
+    @app.get("/api/voice")
+    def voice_status() -> Dict[str, Any]:
+        """Every link SRS voice needs (speech tool, SRS server, MOOSE, desanitised scripts)."""
+        return voice.check(svc.settings)
+
+    @app.post("/api/voice/test")
+    def voice_test(req: VoiceTest) -> Dict[str, Any]:
+        """Speak a test message on the local SRS server, the way the mission does."""
+        if not 20.0 <= req.freq <= 400.0:
+            raise HTTPException(400, "freq must be between 20 and 400 MHz")
+        if req.coalition not in (0, 1, 2):
+            raise HTTPException(400, "coalition must be 0, 1 or 2")
+        return voice.speak(svc.settings, req.text or voice.TEST_TEXT, [req.freq], req.coalition)
+
     @app.get("/api/modules")
     def modules() -> List[Dict[str, Any]]:
         mine = set(owned(svc.settings))
@@ -230,7 +250,8 @@ def create_app(settings: Optional[config.Settings] = None, settings_file: Path =
     def generate(cid: str):
         """Generate Next Mission: the ATO assigns the sortie, the .miz is written."""
         res = guard(svc.generate_mission, cid)
-        return {"ok": True, "path": res.path, "filename": res.filename, "warnings": res.warnings,
+        return {"ok": True, "path": res.path, "filename": res.filename,
+                "warnings": res.warnings + voice.warnings_for_mission(svc.settings),
                 "stats": res.stats, "scripts": res.scripts, "briefing": res.briefing,
                 "extra_paths": res.extra_paths, "slots": res.slots,
                 "sanitized": sanitize.needs_attention(svc.settings)}

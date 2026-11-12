@@ -34,6 +34,7 @@ PHRASES: Dict[str, Dict[str, str]] = {
         "landed": "{callsign}, {tower} Tower, welcome home. Taxi to parking.",
         "csar": "{callsign}, {controller}, copy ejection. Rescue forces are being scrambled to bullseye {bearing}/{range}.",
         "splash": "{controller} copies splash one.",
+        "radio_check": "{callsign}, {controller}, radio check, loud and clear on {freq}.",
     },
     "soviet": {
         "checkin": "{callsign}, I am {controller}. I see you. Stand by for target information.",
@@ -56,6 +57,7 @@ PHRASES: Dict[str, Dict[str, str]] = {
         "landed": "{callsign}, {tower}. Landing recorded. Taxi to the stand.",
         "csar": "{callsign}, {controller}. Ejection observed. Search and rescue is tasked, azimuth {bearing}, range {range}.",
         "splash": "{controller}. Target destroyed, confirmed.",
+        "radio_check": "{callsign}, {controller}. I hear you well on {freq}.",
     },
     "ww2": {
         "checkin": "{callsign}, this is {controller}. Receiving you. Stand by for vectors.",
@@ -75,6 +77,7 @@ PHRASES: Dict[str, Dict[str, str]] = {
         "landing": "{callsign}, {tower}. Clear to land.",
         "landed": "{callsign}, {tower}. Pancake logged.",
         "splash": "{controller}. Splash confirmed.",
+        "radio_check": "{callsign}, {controller}. Receiving you strength five on {freq}.",
     },
 }
 GCI_CALLSIGNS = {"nato": "Overlord", "soviet": "Kupol", "ww2": "Base"}

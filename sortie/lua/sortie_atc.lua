@@ -4,8 +4,12 @@
 -- MOOSE calls used (verified against the vendored Moose_.lua):
 --   MSRS:New(Path, Frequency, Modulation), :SetPort, :SetCoalition, :SetCulture, :SetProvider,
 --   :SetGoogle(PathToCredentials), :PlayText(Text, Delay), MSRS.Provider.WINDOWS / .GOOGLE
+--   :SetFrequencies(table), :SetModulations(table), :SetLabel(name)
+-- MSRS starts SRS's DCS-SR-ExternalAudio.exe once per message: the controller is only in the
+-- SRS client list while it is talking. That needs os and io un-sanitised on the hosting PC.
 --   FLIGHTCONTROL:New(AirbaseName, Frequency, Modulation, PathToSRS, Port):Start()
-SORTIE.atc = { cfg = (SORTIE.cfg and SORTIE.cfg.atc) or {}, last = {}, merged = {}, state = {}, said = {} }
+SORTIE.atc = { cfg = (SORTIE.cfg and SORTIE.cfg.atc) or {}, last = {}, merged = {}, state = {}, said = {},
+               spoken = {} }
 local A = SORTIE.atc
 local C = A.cfg
 local F = C.features or {}
@@ -70,27 +74,91 @@ local function bulls_point()
 end
 
 -- ---- output: text always, voice when available ---------------------------------------------
+-- What is shown as "045/30" or "251.500" has to be said digit by digit.
+local WORDS = { ['0'] = 'zero', ['1'] = 'one', ['2'] = 'two', ['3'] = 'three', ['4'] = 'four', ['5'] = 'five',
+                ['6'] = 'six', ['7'] = 'seven', ['8'] = 'eight', ['9'] = 'niner', ['.'] = 'decimal',
+                L = 'left', R = 'right', C = 'center' }
+local SPELL = { bearing = true, wind_dir = true, qnh = true, freq = true, runway = true, tacan = true }
+
+function A.spell(v)
+  local s = tostring(v)
+  if not string.match(s, '^%d[%d%.]*%a?$') then return s end
+  if string.find(s, '%.') then s = string.gsub(string.gsub(s, '0+$', ''), '%.$', '') end
+  local out = {}
+  for ch in string.gmatch(s, '.') do out[#out + 1] = WORDS[ch] or ch end
+  return table.concat(out, ' ')
+end
+
+function A.speech(key, params)
+  local p = {}
+  for k, v in pairs(params or {}) do p[k] = SPELL[k] and A.spell(v) or v end
+  if p.groups_spoken then p.groups = p.groups_spoken end
+  local text = A.render(key, p)
+  text = string.gsub(text, '/', ', ')
+  text = string.gsub(text, 'BRAA', 'bra')
+  return text
+end
+
 function A.say(key, params, delay)
   params = params or {}
   params.controller = params.controller or (C.controller and C.controller.callsign) or 'Control'
   local text = A.render(key, params)
   if text == '' then return nil end
   SORTIE.message(text, 15)
-  if A.msrs then pcall(function() A.msrs:PlayText(text, delay or 0) end) end
+  if A.msrs then
+    local spoken = A.speech(key, params)
+    A.spoken[#A.spoken + 1] = spoken
+    pcall(function() A.msrs:PlayText(spoken, delay or 0) end)
+  end
   SORTIE.emit('atc', { key = key, text = text })
   A.said[#A.said + 1] = text
   return text
 end
 
-function A.setup_voice()
-  if C.voice == 'off' or C.voice == nil then return end
-  if not MSRS then
-    SORTIE.log('ATC voice requested but MOOSE (MSRS) is not loaded; text only.')
-    return
+local EXE = 'DCS-SR-ExternalAudio.exe'
+
+-- The folder holding the SRS speech tool: SRS 2.x keeps it in <SRS>\ExternalAudio.
+local function find_srs(path)
+  path = string.gsub(tostring(path or ''), '[\\/]+$', '')
+  for _, dir in ipairs({ path, path .. '\\ExternalAudio' }) do
+    local f = io.open(dir .. '\\' .. EXE, 'rb')
+    if f then f:close() return dir end
   end
+  return nil
+end
+
+local function voice_freqs()
+  local list = {}
+  for _, f in ipairs(C.voice_freqs or {}) do list[#list + 1] = f end
+  if #list == 0 then list[1] = (C.controller and C.controller.freq) or 251 end
+  return list
+end
+
+-- Sets A.msrs when speech can work, and A.voice = { ok, reason } either way.
+function A.setup_voice()
+  if C.voice == 'off' or C.voice == nil then A.voice = { ok = false, reason = 'off' } return end
+  local function fail(reason)
+    A.voice = { ok = false, reason = reason }
+    SORTIE.log('ATC voice unavailable, text only: ' .. reason)
+  end
+  if not MSRS then return fail('MOOSE is not loaded in this mission') end
+  if not io or not os then
+    return fail('MissionScripting.lua is sanitised on the PC hosting the mission (use Desanitize in SORTIE Settings)')
+  end
+  local dir = find_srs(C.srs and C.srs.path)
+  if not dir then
+    return fail(EXE .. ' not found in ' .. tostring(C.srs and C.srs.path) .. ' (set the SRS folder in SORTIE Settings)')
+  end
+  local freqs = voice_freqs()
   local ok, err = pcall(function()
-    local freq = (C.controller and C.controller.freq) or 251
-    local m = MSRS:New(C.srs.path, freq, radio.modulation.AM)
+    local mods = {}
+    for i = 1, #freqs do mods[i] = radio.modulation.AM end
+    local m = MSRS:New(dir, freqs[1], radio.modulation.AM)
+    if m.SetFrequencies then m:SetFrequencies(freqs) end
+    if m.SetModulations then m:SetModulations(mods) end
+    if m.SetLabel then
+      m:SetLabel((string.gsub((C.controller and C.controller.callsign) or 'SORTIE', '[^%w_-]', '')))
+    end
     m:SetPort(C.srs.port or 5002)
     m:SetCoalition(C.coalition or 2)
     m:SetCulture(C.srs.culture or 'en-US')
@@ -104,13 +172,48 @@ function A.setup_voice()
     end
     A.msrs = m
   end)
-  if not ok then SORTIE.log('MSRS setup failed, text only: ' .. tostring(err)) end
-  if ok and FLIGHTCONTROL and C.use_flightcontrol and C.home and C.home.kind == 'airfield' then
+  if not ok then return fail('MSRS setup failed: ' .. tostring(err)) end
+  A.voice = { ok = true, path = dir, freqs = freqs }
+  SORTIE.log('ATC voice ready: ' .. dir .. ' on ' .. table.concat(freqs, ', ') .. ' MHz AM, port ' .. tostring(C.srs.port))
+  if FLIGHTCONTROL and C.use_flightcontrol and C.home and C.home.kind == 'airfield' then
     pcall(function()
-      A.flightcontrol = FLIGHTCONTROL:New(C.home.name, C.home.freq, radio.modulation.AM, C.srs.path, C.srs.port)
+      A.flightcontrol = FLIGHTCONTROL:New(C.home.name, C.home.freq, radio.modulation.AM, dir, C.srs.port)
       A.flightcontrol:Start()
     end)
   end
+end
+
+local function freq_text(list)
+  local out = {}
+  for i, f in ipairs(list or {}) do out[i] = string.format('%.3f', f) end
+  return table.concat(out, ' / ')
+end
+
+-- Say once, on screen, whether voice works and where to listen (or why it does not).
+function A.announce_voice()
+  local v = A.voice or { ok = false, reason = 'off' }
+  if v.reason == 'off' then return end
+  SORTIE.emit('voice', { ok = v.ok, reason = v.reason, path = v.path, freqs = v.freqs })
+  if v.ok then
+    SORTIE.message('SORTIE voice: ' .. tostring((C.controller and C.controller.callsign) or 'Control')
+      .. ' speaks through SRS on ' .. freq_text(v.freqs) .. ' AM. F10 > SORTIE Control > Radio check to test.', 20)
+  else
+    SORTIE.message('SORTIE voice is OFF (text only): ' .. tostring(v.reason) .. '.', 30)
+  end
+end
+
+function A.radio_check()
+  local v = A.voice or {}
+  local freq = (v.freqs and v.freqs[1]) or (C.controller and C.controller.freq) or 0
+  local text = A.say('radio_check', { callsign = A.callsign(), freq = string.format('%.3f', freq) })
+  if v.ok then
+    SORTIE.message('Spoken through SRS on ' .. freq_text(v.freqs) .. ' AM. Nothing heard? Check that the SRS server '
+      .. 'is running on port ' .. tostring(C.srs.port) .. ' and that your SRS client is connected to it with a '
+      .. 'radio on one of those frequencies.', 20)
+  elseif v.reason and v.reason ~= 'off' then
+    SORTIE.message('No voice: ' .. tostring(v.reason) .. '.', 20)
+  end
+  return text
 end
 
 -- ---- contacts ------------------------------------------------------------------------------
@@ -164,12 +267,15 @@ function A.picture()
     if SORTIE.dist2d(up, c.p) < (C.picture_range_m or 185000) then near[#near + 1] = c end
   end
   if #near == 0 then return A.say('picture_clean', { callsign = A.callsign() }) end
-  local parts = {}
+  local parts, spoken = {}, {}
   for i = 1, math.min(3, #near) do
-    parts[#parts + 1] = A.render('group', contact_params(ref, near[i], A.callsign()))
+    local cp = contact_params(ref, near[i], A.callsign())
+    parts[#parts + 1] = A.render('group', cp)
+    spoken[#spoken + 1] = A.speech('group', cp)
   end
   return A.say('picture', { callsign = A.callsign(), n = #near, s = (#near == 1) and '' or 's',
-                            groups = table.concat(parts, '. ') .. '.' })
+                            groups = table.concat(parts, '. ') .. '.',
+                            groups_spoken = table.concat(spoken, '. ') .. '.' })
 end
 
 function A.bogey_dope()
@@ -246,10 +352,60 @@ function A.vector(kind)
 end
 
 -- ---- tower calls and event-driven messages -------------------------------------------------
+-- Surface wind at the home base as (direction it blows FROM in degrees, speed in m/s), read from
+-- the running mission; falls back to the planned weather.
+function A.wind()
+  local dir, spd = C.wind_dir or 0, C.wind_speed or 0
+  pcall(function()
+    local p = Airbase.getByName(C.home.name):getPoint()
+    local v = atmosphere.getWind({ x = p.x, y = p.y + 10, z = p.z })
+    local s = math.sqrt(v.x * v.x + v.z * v.z)
+    if s >= 0.5 then dir = math.deg(math.atan2(-v.z, -v.x)) % 360 end
+    spd = s
+  end)
+  return dir, spd
+end
+
+-- Altimeter setting: inches of mercury x100 (NATO, WW2) or millimetres (Soviet).
+function A.qnh()
+  local mm = 760
+  pcall(function() mm = tonumber(env.mission.weather.qnh) or 760 end)
+  if C.procedure == 'soviet' then return string.format('%d', math.floor(mm + 0.5)) end
+  return string.format('%04d', math.floor(mm / 25.4 * 100 + 0.5))
+end
+
+local function runway_name(r, hdg)
+  local num, suffix = string.match(tostring(r.Name or ''), '^(%d+)(%a?)$')
+  local n = tonumber(num)
+  local function off(a) return math.abs((a * 10 - hdg + 180) % 360 - 180) end
+  if n and off(n) <= 30 then return string.format('%02d%s', n, suffix) end
+  local o = n and ((n + 17) % 36 + 1)                         -- the other end of the same strip
+  if o and off(o) <= 30 then return string.format('%02d%s', o, ({ L = 'R', R = 'L' })[suffix] or suffix) end
+  local c = math.floor(hdg / 10 + 0.5) % 36
+  return string.format('%02d', c == 0 and 36 or c)
+end
+
+-- Runway in use at the home base: the end with the most headwind (the longest strip in calm air).
+function A.runway(wind_from, wind_speed)
+  local best, score
+  pcall(function()
+    for _, r in ipairs(Airbase.getByName(C.home.name):getRunways() or {}) do
+      local h = (-math.deg(r.course)) % 360        -- DCS gives the course as a negative bearing in radians
+      for i, hdg in ipairs({ h, (h + 180) % 360 }) do
+        local s = math.cos(math.rad(hdg - wind_from)) * (wind_speed or 0) + (r.length or 0) / 1e5 - i / 1e3
+        if not score or s > score then score, best = s, runway_name(r, hdg) end
+      end
+    end
+  end)
+  return best or C.runway or 'in use'
+end
+
 local function tower_params()
-  return { callsign = A.callsign(), tower = (C.home and C.home.name) or 'Tower', runway = C.runway or 'in use',
-           wind_dir = A.fmt_bearing(C.wind_dir or 0), wind_speed = tostring(C.wind_speed or 0),
-           qnh = C.qnh or '2992', controller = C.controller and C.controller.callsign,
+  local wdir, wspd = A.wind()
+  local shown = (C.procedure == 'soviet') and wspd or wspd * 1.94384        -- m/s or knots
+  return { callsign = A.callsign(), tower = (C.home and C.home.name) or 'Tower', runway = A.runway(wdir, wspd),
+           wind_dir = A.fmt_bearing(wdir), wind_speed = string.format('%d', math.floor(shown + 0.5)),
+           qnh = A.qnh(), controller = C.controller and C.controller.callsign,
            freq = string.format('%.3f', (C.controller and C.controller.freq) or 0) }
 end
 
@@ -314,6 +470,7 @@ function A.menu()
   end
   add('Vector to home base', function() A.vector('home') end)
   if F.tanker then add('Vector to tanker', function() A.vector('tanker') end) end
+  add('Radio check', A.radio_check)
 end
 
 if C.enabled then
@@ -323,5 +480,7 @@ if C.enabled then
   SORTIE.every(C.picture_interval or 120, 'atc.picture', A.picture)
   SORTIE.every(15, 'atc.threat', A.threat_scan)
   SORTIE.every(20, 'atc.approach', A.approach_scan)
-  SORTIE.log('ATC/GCI layer active: ' .. tostring(C.procedure) .. ', voice ' .. tostring(C.voice))
+  timer.scheduleFunction(function() SORTIE.safe('atc.voice', A.announce_voice) end, nil, timer.getTime() + 20)
+  SORTIE.log('ATC/GCI layer active: ' .. tostring(C.procedure) .. ', voice ' .. tostring(C.voice)
+    .. ((A.voice and A.voice.ok) and ' (ready)' or ' (text only)'))
 end

@@ -239,6 +239,22 @@ Messages always appear as text; with a voice engine selected and SimpleRadio Sta
 installed they are also spoken through MOOSE MSRS (Windows or Google TTS; Piper falls back to
 Windows — see Known Issues).
 
+**Getting voice to work.** Voice needs four things, all listed with a green/amber status under
+Settings → *Voice check*: the ATC layer and a voice engine switched on; the SRS install folder
+(the `ExternalAudio` subfolder that holds `DCS-SR-ExternalAudio.exe` is found automatically);
+an SRS server running on the PC that hosts the mission; and mission scripts desanitised there
+(MOOSE has to start the SRS speech tool). *Test voice through SRS* speaks a sentence on a
+frequency of your choice without starting DCS.
+
+The controller is not a permanent SRS client. It joins the SRS server only while it speaks and
+leaves again a few seconds later, so an empty client list between calls is normal. Calls go out
+on the controller's frequency and on your flight's frequency (AM), so you hear them on the radio
+you start with. About 20 seconds into the mission a message says which frequencies voice is on,
+or why it is off; F10 → SORTIE Control → *Radio check* repeats the test at any time.
+
+Tower calls read the runway in use (most headwind), the surface wind and the altimeter setting
+from the running mission.
+
 ## Tests
 
 ```powershell
